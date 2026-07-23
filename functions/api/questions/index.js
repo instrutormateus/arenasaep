@@ -24,7 +24,7 @@ export async function onRequestPost({ request, env }) {
     return json({
       error: "Não foi possível classificar e arquivar a questão.",
       details: String(error?.message || error),
-      hint: "Confirme o modelo AI_CLASSIFY_MODEL, execute o schema.sql no D1 e verifique os logs da Pages Function. Na versão 1.3.2, a cota esgotada não deve impedir o arquivamento, salvo se ARCHIVE_WITHOUT_AI=false.",
+      hint: "Confirme o modelo AI_CLASSIFY_MODEL, execute o schema.sql no D1 e verifique os logs da Pages Function. Na versão 1.3.4, a cota esgotada não impede o arquivamento, salvo se ARCHIVE_WITHOUT_AI=false; a questão e o histórico são gravados no mesmo batch.",
     }, 500);
   }
 }

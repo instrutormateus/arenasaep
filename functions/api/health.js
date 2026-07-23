@@ -24,7 +24,7 @@ export async function onRequestGet({ request, env }) {
 
   return json({
     service: "Arena SAEP Cloud",
-    version: "1.3.2",
+    version: "1.3.4",
     authorized: true,
     bindings: {
       ai: Boolean(env.AI),

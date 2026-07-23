@@ -1,4 +1,4 @@
-import { normalizeText, sanitizeQuestion, sha256 } from "./common.js";
+import { normalizeText, safeJsonParse, sanitizeQuestion, sha256 } from "./common.js";
 import { buildFallbackClassification, classifyQuestion } from "./ai.js";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
@@ -52,16 +52,31 @@ async function persistImages(env, question, idKey) {
 }
 
 function rowToQuestion(row) {
-  const storedAlternatives = JSON.parse(row.alternatives_json || "[]");
-  const alternativeCount = [2, 4, 5].includes(Number(row.quantidade_alternativas)) ? Number(row.quantidade_alternativas) : storedAlternatives.length;
+  const parsedAlternatives = safeJsonParse(row.alternatives_json, []);
+  const storedAlternatives = Array.isArray(parsedAlternatives) ? parsedAlternatives.map(String) : [];
+  const alternativeCount = [2, 4, 5].includes(Number(row.quantidade_alternativas))
+    ? Number(row.quantidade_alternativas)
+    : storedAlternatives.length;
   const alternatives = storedAlternatives.slice(0, alternativeCount);
-  const images = JSON.parse(row.images_json || "[]");
-  const alternativeImages = JSON.parse(row.alternative_images_json || "{}");
-  const classification = JSON.parse(row.ai_classification_json || "{}");
+  const parsedImages = safeJsonParse(row.images_json, []);
+  const images = Array.isArray(parsedImages) ? parsedImages.map(String) : [];
+  const parsedAlternativeImages = safeJsonParse(row.alternative_images_json, {});
+  const alternativeImages = Object.fromEntries(
+    LETTERS.map((letter) => [
+      letter,
+      Array.isArray(parsedAlternativeImages?.[letter])
+        ? parsedAlternativeImages[letter].map(String)
+        : [],
+    ])
+  );
+  const parsedClassification = safeJsonParse(row.ai_classification_json, {});
+  const classification = parsedClassification && typeof parsedClassification === "object"
+    ? parsedClassification
+    : {};
   return {
     id: row.id,
     enunciado: row.enunciado,
-    alternativas,
+    alternativas: alternatives,
     correta: row.correta,
     quantidadeAlternativas: alternativeCount,
     dificuldade: row.dificuldade,
@@ -86,6 +101,13 @@ function rowToQuestion(row) {
     aiModel: row.ai_model || "",
     aiConfidence: Number(row.ai_confidence) || 0,
     aiClassification: classification,
+    classificationPending: Boolean(classification.pendingAI),
+    classificationMode: classification.fallback
+      ? "provisoria-local"
+      : classification.reused
+        ? "ia-reutilizada"
+        : "ia-nova",
+    archiveWarning: Array.isArray(classification.reviewNotes) ? String(classification.reviewNotes[0] || "") : "",
     cloudArchivedAt: row.updated_at,
   };
 }
@@ -128,6 +150,10 @@ export async function saveQuestion(env, input, instructor) {
       question.capacidade || question.habilidade || question.codigoMatriz
     );
 
+  const quotaAlreadyKnown =
+    question.aiClassification?.reasonCode === "AI_DAILY_QUOTA_EXCEEDED" ||
+    String(question.aiModel || "").includes("quota-exceeded");
+
   if (reusableAiMetadata) {
     classification = {
       dificuldade: question.dificuldade || "Médio",
@@ -144,6 +170,14 @@ export async function saveQuestion(env, input, instructor) {
       reused: true,
       pendingAI: false,
     };
+  } else if (quotaAlreadyKnown) {
+    classification = buildFallbackClassification(
+      question,
+      new Error("4006: daily free allocation of 10,000 neurons already exhausted during PDF analysis.")
+    );
+    archivedWithoutFreshAI = true;
+    classificationWarning = classification.reviewNotes?.[0] ||
+      "A questão foi arquivada com classificação provisória porque a cota diária da IA está esgotada.";
   } else {
     try {
       classification = await classifyQuestion(env, question);
@@ -189,54 +223,206 @@ export async function saveQuestion(env, input, instructor) {
   }
   const now = new Date().toISOString();
   const id = duplicate?.id || finalQuestion.id;
-  const searchText = normalizeText([id, finalQuestion.enunciado, finalQuestion.tema, finalQuestion.competencia, finalQuestion.capacidade, finalQuestion.habilidade, finalQuestion.unidadeCurricular].join(" "));
-  try {
-    await env.DB.prepare(`
+  const createdAt = duplicate?.created_at || now;
+  const searchText = normalizeText([
+    id,
+    finalQuestion.enunciado,
+    finalQuestion.tema,
+    finalQuestion.competencia,
+    finalQuestion.capacidade,
+    finalQuestion.habilidade,
+    finalQuestion.unidadeCurricular,
+  ].join(" "));
+  const alternativesForStorage = finalQuestion.alternativas.slice(0, finalQuestion.quantidadeAlternativas);
+  const revisionId = crypto.randomUUID();
+  const archivedQuestion = {
+    id,
+    enunciado: finalQuestion.enunciado,
+    alternativas: alternativesForStorage,
+    correta: finalQuestion.correta,
+    quantidadeAlternativas: finalQuestion.quantidadeAlternativas,
+    dificuldade: finalQuestion.dificuldade,
+    tema: finalQuestion.tema || "",
+    competencia: finalQuestion.competencia || "",
+    capacidade: finalQuestion.capacidade || "",
+    habilidade: finalQuestion.habilidade || "",
+    unidadeCurricular: finalQuestion.unidadeCurricular || "",
+    codigoMatriz: finalQuestion.codigoMatriz || "",
+    justificativa: finalQuestion.justificativa || "",
+    fonte: finalQuestion.fonte || "",
+    tempo: finalQuestion.tempo || null,
+    imagens: stored.images,
+    imagemUrl: stored.images[0] || "",
+    thumbnailUrl: stored.thumbnail || stored.images[0] || "",
+    alternativaImagens: stored.alternativeImages,
+    arquivoOrigem: finalQuestion.arquivoOrigem || "",
+    paginaOrigem: finalQuestion.paginaOrigem || "",
+    statusGabarito: finalQuestion.statusGabarito || "Validado pelo instrutor",
+    observacao: finalQuestion.observacao || "",
+    approvedBy: instructor,
+    aiModel: classification.model || "",
+    aiConfidence: Number(classification.confidence) || 0,
+    aiClassification: classification,
+    cloudArchivedAt: now,
+    classificationPending: Boolean(classification.pendingAI),
+    classificationMode: classification.fallback
+      ? "provisoria-local"
+      : classification.reused
+        ? "ia-reutilizada"
+        : "ia-nova",
+    archiveWarning: classificationWarning,
+  };
+
+  const upsertStatement = env.DB.prepare(`
     INSERT INTO questions (
       id,id_key,enunciado,alternatives_json,correta,quantidade_alternativas,dificuldade,tema,competencia,capacidade,habilidade,unidade_curricular,codigo_matriz,justificativa,fonte,tempo,images_json,alternative_images_json,thumbnail_url,arquivo_origem,pagina_origem,status_gabarito,observacao,approved_by,ai_model,ai_confidence,ai_classification_json,content_hash,search_text,status,created_at,updated_at
-    ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,'active',COALESCE((SELECT created_at FROM questions WHERE id_key=?2),?30),?30)
+    ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,'active',?30,?31)
     ON CONFLICT(id_key) DO UPDATE SET
-      id=excluded.id,enunciado=excluded.enunciado,alternatives_json=excluded.alternatives_json,correta=excluded.correta,quantidade_alternativas=excluded.quantidade_alternativas,dificuldade=excluded.dificuldade,tema=excluded.tema,competencia=excluded.competencia,capacidade=excluded.capacidade,habilidade=excluded.habilidade,unidade_curricular=excluded.unidade_curricular,codigo_matriz=excluded.codigo_matriz,justificativa=excluded.justificativa,fonte=excluded.fonte,tempo=excluded.tempo,images_json=excluded.images_json,alternative_images_json=excluded.alternative_images_json,thumbnail_url=excluded.thumbnail_url,arquivo_origem=excluded.arquivo_origem,pagina_origem=excluded.pagina_origem,status_gabarito=excluded.status_gabarito,observacao=excluded.observacao,approved_by=excluded.approved_by,ai_model=excluded.ai_model,ai_confidence=excluded.ai_confidence,ai_classification_json=excluded.ai_classification_json,content_hash=excluded.content_hash,search_text=excluded.search_text,status='active',updated_at=excluded.updated_at
+      id=excluded.id,
+      enunciado=excluded.enunciado,
+      alternatives_json=excluded.alternatives_json,
+      correta=excluded.correta,
+      quantidade_alternativas=excluded.quantidade_alternativas,
+      dificuldade=excluded.dificuldade,
+      tema=excluded.tema,
+      competencia=excluded.competencia,
+      capacidade=excluded.capacidade,
+      habilidade=excluded.habilidade,
+      unidade_curricular=excluded.unidade_curricular,
+      codigo_matriz=excluded.codigo_matriz,
+      justificativa=excluded.justificativa,
+      fonte=excluded.fonte,
+      tempo=excluded.tempo,
+      images_json=excluded.images_json,
+      alternative_images_json=excluded.alternative_images_json,
+      thumbnail_url=excluded.thumbnail_url,
+      arquivo_origem=excluded.arquivo_origem,
+      pagina_origem=excluded.pagina_origem,
+      status_gabarito=excluded.status_gabarito,
+      observacao=excluded.observacao,
+      approved_by=excluded.approved_by,
+      ai_model=excluded.ai_model,
+      ai_confidence=excluded.ai_confidence,
+      ai_classification_json=excluded.ai_classification_json,
+      content_hash=excluded.content_hash,
+      search_text=excluded.search_text,
+      status='active',
+      updated_at=excluded.updated_at
   `).bind(
-    id, idKey, finalQuestion.enunciado, JSON.stringify(finalQuestion.alternativas.slice(0, finalQuestion.quantidadeAlternativas)), finalQuestion.correta, finalQuestion.quantidadeAlternativas,
-    finalQuestion.dificuldade, finalQuestion.tema, finalQuestion.competencia, finalQuestion.capacidade, finalQuestion.habilidade,
-    finalQuestion.unidadeCurricular, finalQuestion.codigoMatriz, finalQuestion.justificativa, finalQuestion.fonte, finalQuestion.tempo,
-    JSON.stringify(stored.images), JSON.stringify(stored.alternativeImages), stored.thumbnail, finalQuestion.arquivoOrigem, finalQuestion.paginaOrigem,
-    finalQuestion.statusGabarito, finalQuestion.observacao, instructor, classification.model, classification.confidence,
-    JSON.stringify(classification), contentHash, searchText, now
-  ).run();
-  } catch (error) {
-    throw new Error(`Gravação da questão no D1: ${String(error?.message || error)}`);
-  }
-  const row = await env.DB.prepare("SELECT * FROM questions WHERE id_key = ?1 LIMIT 1").bind(idKey).first();
-  const archivedQuestion = rowToQuestion(row);
-  const revisionId = crypto.randomUUID();
-  try {
-    await env.DB.prepare(`
+    id,
+    idKey,
+    archivedQuestion.enunciado,
+    JSON.stringify(archivedQuestion.alternativas),
+    archivedQuestion.correta,
+    archivedQuestion.quantidadeAlternativas,
+    archivedQuestion.dificuldade,
+    archivedQuestion.tema,
+    archivedQuestion.competencia,
+    archivedQuestion.capacidade,
+    archivedQuestion.habilidade,
+    archivedQuestion.unidadeCurricular,
+    archivedQuestion.codigoMatriz,
+    archivedQuestion.justificativa,
+    archivedQuestion.fonte,
+    archivedQuestion.tempo,
+    JSON.stringify(archivedQuestion.imagens),
+    JSON.stringify(archivedQuestion.alternativaImagens),
+    archivedQuestion.thumbnailUrl,
+    archivedQuestion.arquivoOrigem,
+    archivedQuestion.paginaOrigem,
+    archivedQuestion.statusGabarito,
+    archivedQuestion.observacao,
+    instructor,
+    archivedQuestion.aiModel,
+    archivedQuestion.aiConfidence,
+    JSON.stringify(classification),
+    contentHash,
+    searchText,
+    createdAt,
+    now
+  );
+
+  const revisionStatement = env.DB.prepare(`
     INSERT INTO question_revisions (
       revision_id,question_id_key,question_id,snapshot_json,content_hash,approved_by,ai_model,ai_confidence,created_at
     ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
   `).bind(
-    revisionId,idKey,archivedQuestion.id,JSON.stringify(archivedQuestion),contentHash,instructor,
-    classification.model,classification.confidence,now
-  ).run();
+    revisionId,
+    idKey,
+    archivedQuestion.id,
+    JSON.stringify(archivedQuestion),
+    contentHash,
+    instructor,
+    archivedQuestion.aiModel,
+    archivedQuestion.aiConfidence,
+    now
+  );
+
+  try {
+    // O batch evita que a questão seja atualizada sem a respectiva revisão histórica.
+    await env.DB.batch([upsertStatement, revisionStatement]);
   } catch (error) {
-    throw new Error(`Gravação do histórico no D1: ${String(error?.message || error)}`);
+    throw new Error(`Gravação atômica da questão e do histórico no D1: ${String(error?.message || error)}`);
   }
-  const responseQuestion = {
-    ...archivedQuestion,
-    classificationPending: Boolean(classification.pendingAI),
-    classificationMode: classification.fallback ? "provisoria-local" : classification.reused ? "ia-reutilizada" : "ia-nova",
-    archiveWarning: classificationWarning,
-  };
+
   return {
-    question: responseQuestion,
+    question: archivedQuestion,
     duplicate: Boolean(duplicate),
     classification,
     revisionId,
     archivedWithoutFreshAI,
     warning: classificationWarning,
   };
+
+}
+
+
+export async function repairMissingHistory(env, instructor, limit = 500) {
+  if (!env.DB) throw new Error("Binding DB ausente.");
+  const safeLimit = Math.max(1, Math.min(2000, Number(limit) || 500));
+  const result = await env.DB.prepare(`
+    SELECT q.*
+    FROM questions q
+    WHERE q.status = 'active'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM question_revisions r
+        WHERE r.question_id_key = q.id_key
+          AND r.content_hash = q.content_hash
+      )
+    ORDER BY q.updated_at ASC
+    LIMIT ?1
+  `).bind(safeLimit).all();
+  const rows = result.results || [];
+  let repaired = 0;
+  for (let offset = 0; offset < rows.length; offset += 50) {
+    const chunk = rows.slice(offset, offset + 50);
+    const statements = chunk.map((row) => {
+      const snapshot = rowToQuestion(row);
+      snapshot.historyRepair = true;
+      snapshot.historyRepairAt = new Date().toISOString();
+      return env.DB.prepare(`
+        INSERT INTO question_revisions (
+          revision_id,question_id_key,question_id,snapshot_json,content_hash,approved_by,ai_model,ai_confidence,created_at
+        ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
+      `).bind(
+        crypto.randomUUID(),
+        row.id_key,
+        row.id,
+        JSON.stringify(snapshot),
+        row.content_hash,
+        instructor || row.approved_by || "Reparo automático",
+        row.ai_model || "",
+        Number(row.ai_confidence) || 0,
+        row.updated_at || new Date().toISOString()
+      );
+    });
+    if (statements.length) {
+      await env.DB.batch(statements);
+      repaired += statements.length;
+    }
+  }
+  return { repaired, scanned: rows.length, limit: safeLimit };
 }
 
 export async function listQuestions(env, url) {
