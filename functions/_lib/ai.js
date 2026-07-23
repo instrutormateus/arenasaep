@@ -97,7 +97,8 @@ const PAGE_SCHEMA = {
   properties: {
     id: { type: "string" },
     enunciado: { type: "string" },
-    alternativas: { type: "array", items: { type: "string" }, minItems: 4, maxItems: 5 },
+    alternativas: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 5 },
+    quantidadeAlternativas: { type: "integer", enum: [2, 4, 5] },
     warnings: { type: "array", items: { type: "string" }, maxItems: 10 },
     confidence: { type: "number", minimum: 0, maximum: 1 },
     visuals: {
@@ -119,7 +120,7 @@ const PAGE_SCHEMA = {
       },
     },
   },
-  required: ["id", "enunciado", "alternativas", "warnings", "confidence", "visuals"],
+  required: ["id", "enunciado", "alternativas", "quantidadeAlternativas", "warnings", "confidence", "visuals"],
 };
 
 async function runJson(env, model, messages, schema, extra = {}) {
@@ -220,38 +221,44 @@ export async function analyzeQuestionPages(env, draft, pages) {
     const messages = [
       {
         role: "system",
-        content: "Você é um transcritor técnico de avaliações SAEP. Preserve literalmente o conteúdo visível e identifique somente figuras necessárias à resolução. Não determine o gabarito.",
+        content: "Você é um transcritor técnico de avaliações SAEP. Preserve literalmente o conteúdo visível. As questões podem ter exatamente 2, 4 ou 5 alternativas. Uma alternativa pode ser composta somente por imagem, circuito, tabela, símbolo ou diagrama; nesse caso mantenha o texto vazio e associe uma caixa visual ao alvo correto. O título FOLHA DE RESPOSTA encerra a seção de questões e nunca deve ser interpretado como questão. A seção GABARITO é uma tabela separada; não invente respostas e preserve o gabarito já associado ao rascunho pelo sistema.",
       },
       {
         role: "user",
-        content: `Analise a página ${page.page} relacionada à questão ${draft.id}. O rascunho extraído pelo PDF.js está abaixo. Não resuma, não corrija erros do original e não invente conteúdo. Para figuras, retorne caixas normalizadas de 0 a 1000. Ignore logotipo, cabeçalho, rodapé e número da página.\n\n${JSON.stringify(draft, null, 2)}`,
+        content: `Analise a página ${page.page} relacionada à questão ${draft.id}. O rascunho extraído pelo PDF.js está abaixo. Não resuma, não corrija erros do original e não invente conteúdo. Reconheça exatamente ${draft.quantidadeAlternativas || "2, 4 ou 5"} alternativas, incluindo alternativas exclusivamente visuais. Para figuras, retorne caixas normalizadas de 0 a 1000 e use target=question para imagem do enunciado ou target=A/B/C/D/E para imagem de alternativa. Ignore logotipo, cabeçalho, rodapé, número da página, FOLHA DE RESPOSTA e GABARITO. O campo correta, quando presente no rascunho, veio da tabela oficial de gabarito e não deve ser modificado.\n\n${JSON.stringify(draft, null, 2)}`,
       },
     ];
     const result = await runJson(env, model, messages, PAGE_SCHEMA, { image: page.image, max_tokens: 3000 });
     if (result) results.push({ page: page.page, ...result });
   }
 
+  const resultCount = results.map((r) => Number(r.quantidadeAlternativas)).find((n) => [2, 4, 5].includes(n));
+  const draftCount = Number(draft.quantidadeAlternativas);
+  const count = [2, 4, 5].includes(draftCount) ? draftCount : resultCount || 5;
   const merged = {
     id: String(draft.id || results.find((r) => r.id)?.id || ""),
     enunciado: String(draft.enunciado || ""),
-    alternativas: Array.isArray(draft.alternativas) ? draft.alternativas.slice(0, 5).map(String) : [],
+    alternativas: Array.isArray(draft.alternativas) ? draft.alternativas.slice(0, count).map(String) : [],
+    quantidadeAlternativas: count,
+    correta: String(draft.correta || ""),
+    statusGabarito: String(draft.statusGabarito || ""),
     warnings: [],
     visuals: [],
     confidence: 0,
   };
-  while (merged.alternativas.length < 5) merged.alternativas.push("");
+  while (merged.alternativas.length < count) merged.alternativas.push("");
   for (const result of results) {
     if (!merged.enunciado && result.enunciado) merged.enunciado = String(result.enunciado);
-    (result.alternativas || []).forEach((value, i) => {
+    (result.alternativas || []).slice(0, merged.quantidadeAlternativas).forEach((value, i) => {
       if (!merged.alternativas[i] && value) merged.alternativas[i] = String(value);
     });
     merged.warnings.push(...(result.warnings || []).map(String));
     merged.visuals.push(...(result.visuals || []).map((v) => ({ ...v, page: Number(v.page || result.page) })));
     merged.confidence = Math.max(merged.confidence, Number(result.confidence) || 0);
   }
-  const classification = await classifyQuestion(env, { ...merged, correta: "", dificuldade: "Médio" });
+  const classification = await classifyQuestion(env, { ...merged, dificuldade: draft.dificuldade || "Médio" });
   return {
-    question: { ...merged, ...classification, correta: "" },
+    question: { ...merged, ...classification, correta: merged.correta },
     visuals: merged.visuals,
     warnings: [...new Set([...merged.warnings, ...classification.reviewNotes])],
     confidence: Math.max(merged.confidence, classification.confidence || 0),

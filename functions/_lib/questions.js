@@ -52,7 +52,9 @@ async function persistImages(env, question, idKey) {
 }
 
 function rowToQuestion(row) {
-  const alternatives = JSON.parse(row.alternatives_json || "[]");
+  const storedAlternatives = JSON.parse(row.alternatives_json || "[]");
+  const alternativeCount = [2, 4, 5].includes(Number(row.quantidade_alternativas)) ? Number(row.quantidade_alternativas) : storedAlternatives.length;
+  const alternatives = storedAlternatives.slice(0, alternativeCount);
   const images = JSON.parse(row.images_json || "[]");
   const alternativeImages = JSON.parse(row.alternative_images_json || "{}");
   const classification = JSON.parse(row.ai_classification_json || "{}");
@@ -61,7 +63,7 @@ function rowToQuestion(row) {
     enunciado: row.enunciado,
     alternativas,
     correta: row.correta,
-    quantidadeAlternativas: row.quantidade_alternativas,
+    quantidadeAlternativas: alternativeCount,
     dificuldade: row.dificuldade,
     tema: row.tema || "",
     competencia: row.competencia || "",
@@ -171,7 +173,7 @@ export async function saveQuestion(env, input, instructor) {
     codigoMatriz: classification.codigoMatriz || question.codigoMatriz,
   };
   const requestedIdKey = normalizeText(finalQuestion.id).replace(/\s+/g, "-") || `q-${Date.now()}`;
-  const contentHash = await sha256(JSON.stringify({ enunciado: normalizeText(finalQuestion.enunciado), alternativas: finalQuestion.alternativas.map(normalizeText), correta: finalQuestion.correta }));
+  const contentHash = await sha256(JSON.stringify({ enunciado: normalizeText(finalQuestion.enunciado), alternativas: finalQuestion.alternativas.slice(0, finalQuestion.quantidadeAlternativas).map(normalizeText), correta: finalQuestion.correta }));
   const duplicateByHash = await env.DB.prepare("SELECT * FROM questions WHERE content_hash = ?1 LIMIT 1").bind(contentHash).first();
   const duplicateById = duplicateByHash
     ? null
@@ -196,7 +198,7 @@ export async function saveQuestion(env, input, instructor) {
     ON CONFLICT(id_key) DO UPDATE SET
       id=excluded.id,enunciado=excluded.enunciado,alternatives_json=excluded.alternatives_json,correta=excluded.correta,quantidade_alternativas=excluded.quantidade_alternativas,dificuldade=excluded.dificuldade,tema=excluded.tema,competencia=excluded.competencia,capacidade=excluded.capacidade,habilidade=excluded.habilidade,unidade_curricular=excluded.unidade_curricular,codigo_matriz=excluded.codigo_matriz,justificativa=excluded.justificativa,fonte=excluded.fonte,tempo=excluded.tempo,images_json=excluded.images_json,alternative_images_json=excluded.alternative_images_json,thumbnail_url=excluded.thumbnail_url,arquivo_origem=excluded.arquivo_origem,pagina_origem=excluded.pagina_origem,status_gabarito=excluded.status_gabarito,observacao=excluded.observacao,approved_by=excluded.approved_by,ai_model=excluded.ai_model,ai_confidence=excluded.ai_confidence,ai_classification_json=excluded.ai_classification_json,content_hash=excluded.content_hash,search_text=excluded.search_text,status='active',updated_at=excluded.updated_at
   `).bind(
-    id, idKey, finalQuestion.enunciado, JSON.stringify(finalQuestion.alternativas), finalQuestion.correta, finalQuestion.quantidadeAlternativas,
+    id, idKey, finalQuestion.enunciado, JSON.stringify(finalQuestion.alternativas.slice(0, finalQuestion.quantidadeAlternativas)), finalQuestion.correta, finalQuestion.quantidadeAlternativas,
     finalQuestion.dificuldade, finalQuestion.tema, finalQuestion.competencia, finalQuestion.capacidade, finalQuestion.habilidade,
     finalQuestion.unidadeCurricular, finalQuestion.codigoMatriz, finalQuestion.justificativa, finalQuestion.fonte, finalQuestion.tempo,
     JSON.stringify(stored.images), JSON.stringify(stored.alternativeImages), stored.thumbnail, finalQuestion.arquivoOrigem, finalQuestion.paginaOrigem,

@@ -70,19 +70,35 @@ export async function sha256(value) {
 
 export function sanitizeQuestion(input = {}) {
   const letters = ["A", "B", "C", "D", "E"];
+  const allowedCounts = [2, 4, 5];
   const sourceAlternatives = input.alternativas || input.alternatives || [];
   const alternatives = Array.isArray(sourceAlternatives)
     ? sourceAlternatives.slice(0, 5).map((v) => String(v ?? ""))
     : letters.map((l) => String(sourceAlternatives[l] ?? sourceAlternatives[l.toLowerCase()] ?? ""));
-  while (alternatives.length < 5) alternatives.push("");
   const correct = String(input.correta || input.correct || "").trim().toUpperCase().slice(0, 1);
   const altImages = input.alternativaImagens || input.alternativeImages || {};
+  const normalizedAltImages = Object.fromEntries(
+    letters.map((l) => [l, [...new Set((Array.isArray(altImages[l]) ? altImages[l] : altImages[l] ? [altImages[l]] : []).map(String))]])
+  );
+  const inferredLastIndex = letters.reduce((last, letter, index) => {
+    const text = String(alternatives[index] || "").trim();
+    const visual = normalizedAltImages[letter].length > 0;
+    return text || visual ? index : last;
+  }, -1);
+  const requestedCount = Number(input.quantidadeAlternativas || input.alternativeCount || 0);
+  const inferredCount = inferredLastIndex + 1;
+  const count = allowedCounts.includes(requestedCount) ? requestedCount : inferredCount;
+
+  if (allowedCounts.includes(count)) {
+    letters.slice(count).forEach((letter) => { normalizedAltImages[letter] = []; });
+  }
+
   const question = {
     id: String(input.id || input.codigo || `Q_${Date.now()}`).trim().slice(0, 160),
     enunciado: String(input.enunciado || input.question || "").trim(),
-    alternativas: alternatives,
+    alternativas: alternatives.slice(0, Math.max(0, count)),
     correta: letters.includes(correct) ? correct : "",
-    quantidadeAlternativas: Number(input.quantidadeAlternativas || alternatives.filter(Boolean).length || 5),
+    quantidadeAlternativas: count,
     dificuldade: ["Fácil", "Médio", "Difícil"].includes(input.dificuldade) ? input.dificuldade : "Médio",
     tema: String(input.tema || "").trim().slice(0, 240),
     competencia: String(input.competencia || "").trim().slice(0, 500),
@@ -95,9 +111,7 @@ export function sanitizeQuestion(input = {}) {
     tempo: Number(input.tempo) > 0 ? Math.round(Number(input.tempo)) : null,
     imagens: [...new Set([...(Array.isArray(input.imagens) ? input.imagens : []), input.imagemUrl].filter(Boolean).map(String))],
     thumbnailUrl: String(input.thumbnailUrl || input.imagemUrl || ""),
-    alternativaImagens: Object.fromEntries(
-      letters.map((l) => [l, [...new Set((Array.isArray(altImages[l]) ? altImages[l] : altImages[l] ? [altImages[l]] : []).map(String))]])
-    ),
+    alternativaImagens: normalizedAltImages,
     arquivoOrigem: String(input.arquivoOrigem || "").trim().slice(0, 500),
     paginaOrigem: String(input.paginaOrigem || "").trim().slice(0, 160),
     statusGabarito: String(input.statusGabarito || "Validado pelo instrutor").trim().slice(0, 160),
@@ -106,17 +120,21 @@ export function sanitizeQuestion(input = {}) {
     aiConfidence: Math.max(0, Math.min(1, Number(input.aiConfidence ?? input.confidence) || 0)),
     aiClassification: input.aiClassification && typeof input.aiClassification === "object" ? input.aiClassification : null,
   };
-  const availableAlternatives = letters.filter((letter, index) => {
-    const text = String(question.alternativas[index] || "").trim();
-    const visual = Array.isArray(question.alternativaImagens[letter]) && question.alternativaImagens[letter].length > 0;
-    return Boolean(text || visual);
-  }).length;
-  question.quantidadeAlternativas = Math.max(
-    availableAlternatives,
-    Math.min(5, Number(input.quantidadeAlternativas) || 0)
-  );
+
   if (!question.id || !question.enunciado) throw new Error("A questão precisa de ID e enunciado.");
-  if (!question.correta) throw new Error("O gabarito precisa ser informado pelo instrutor.");
-  if (availableAlternatives < 4) throw new Error("A questão precisa de pelo menos quatro alternativas preenchidas ou visuais.");
+  if (!allowedCounts.includes(question.quantidadeAlternativas)) {
+    throw new Error(`A questão deve possuir exatamente 2, 4 ou 5 alternativas. Foram identificadas ${question.quantidadeAlternativas || 0}.`);
+  }
+  if (!letters.slice(0, question.quantidadeAlternativas).includes(question.correta)) {
+    throw new Error("O gabarito precisa corresponder a uma das alternativas existentes.");
+  }
+  for (let index = 0; index < question.quantidadeAlternativas; index++) {
+    const letter = letters[index];
+    const text = String(question.alternativas[index] || "").trim();
+    const visual = question.alternativaImagens[letter].length > 0;
+    if (!text && !visual) {
+      throw new Error(`A alternativa ${letter} precisa conter texto ou imagem.`);
+    }
+  }
   return question;
 }

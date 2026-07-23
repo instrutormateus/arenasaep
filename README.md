@@ -91,8 +91,8 @@ O painel deve indicar:
 
 ## Observações importantes
 
-- A camada gratuita da Cloudflare possui cotas. Quando a cota de Workers AI acabar, a extração local do texto e o recorte manual continuam disponíveis, mas a aprovação em nuvem dependerá da renovação da cota.
-- O gabarito nunca é definido automaticamente pela IA. Ele precisa ser confirmado pelo instrutor antes do arquivamento.
+- A camada gratuita da Cloudflare possui cotas. Quando a cota de Workers AI acabar, a extração estrutural, a leitura do gabarito, o recorte manual e o arquivamento provisório continuam disponíveis.
+- O gabarito não é inventado pela IA. Quando existe uma tabela GABARITO no PDF, a resposta é associada automaticamente pelo código SAEP e precisa ser confirmada pelo instrutor; na ausência da tabela, o preenchimento é manual.
 - O modelo de IA pode ser alterado nas variáveis do Pages sem editar o HTML.
 - Para produção institucional, recomenda-se substituir a chave compartilhada por Cloudflare Access ou autenticação corporativa.
 
@@ -100,3 +100,44 @@ O painel deve indicar:
 ## Cotas gratuitas
 
 A aplicação foi configurada para economizar a cota: o PDF.js extrai o texto no navegador e somente as páginas relevantes são enviadas à IA. O modelo visual padrão é `@cf/google/gemma-4-26b-a4b-it`, mas pode ser trocado nas variáveis do Pages. As cotas da Cloudflare podem mudar; acompanhe o painel de uso.
+
+
+## Correção 1.3.1 — erro ao aprovar e arquivar
+
+A versão 1.3.1 corrige a chamada ao Workers AI para usar `max_tokens`, que é o parâmetro aceito pelos modelos do Workers AI. A versão anterior enviava `max_completion_tokens`, podendo causar falha na classificação.
+
+O teste de conexão agora também confirma se as tabelas `questions` e `question_revisions` existem no D1. Se aparecer **tabelas D1: PENDENTES**, abra o banco D1 no painel Cloudflare, entre em **Console** e execute todo o conteúdo de `schema.sql`.
+
+As mensagens de erro da interface agora exibem a etapa exata: classificação por IA, armazenamento no R2, gravação no D1 ou histórico.
+
+
+## Versão 1.3.2 — cota gratuita do Workers AI
+
+A cota gratuita do Workers AI é de 10.000 Neurons por dia e reinicia às 00:00 UTC.
+A partir da versão 1.3.2, o esgotamento dessa cota não bloqueia o arquivamento:
+
+- a classificação produzida na análise visual do PDF é reutilizada, evitando uma segunda chamada de IA;
+- quando nenhuma classificação anterior estiver disponível, a questão é arquivada com os metadados revisados pelo instrutor e uma classificação heurística provisória;
+- o registro recebe `classificationPending: true` e pode ser atualizado posteriormente;
+- para exigir IA obrigatoriamente e voltar ao comportamento estrito, crie a variável `ARCHIVE_WITHOUT_AI=false`.
+
+Essa estratégia mantém o D1 e o R2 disponíveis mesmo quando a cota diária da IA termina.
+
+## Versão 1.3.3 - estrutura característica das provas SAEP
+
+A importação de PDF passou a reconhecer a estrutura completa dos arquivos de prova:
+
+- questões com exatamente **2, 4 ou 5 alternativas**;
+- alternativas com texto, somente imagem ou combinação de texto e imagem;
+- figuras no enunciado e figuras específicas nas alternativas A, B, C, D ou E;
+- o título **FOLHA DE RESPOSTA** como marcador obrigatório de encerramento da seção de questões;
+- a seção **GABARITO** nas páginas finais;
+- associação automática da resposta correta ao código `SAEP_XXXXX`;
+- interrupção da leitura de questões antes da folha de respostas, evitando que os códigos listados na folha ou no gabarito sejam importados como novas questões;
+- exibição da quantidade de alternativas e da origem do gabarito na tela de revisão.
+
+O gabarito extraído da tabela oficial é pré-selecionado, mas permanece editável e deve ser confirmado pelo instrutor. Se a tabela não for localizada ou não possuir o código da questão, o campo fica pendente para preenchimento manual.
+
+No PDF de validação `avaliações-3.pdf`, o importador reconhece 40 questões antes da FOLHA DE RESPOSTA, localiza 40 respostas na tabela GABARITO e associa todas pelo código SAEP.
+
+Esta atualização não exige alteração no `schema.sql` nem recriação dos bindings. Basta substituir as pastas `public` e `functions` e realizar um novo deployment no Cloudflare Pages.
