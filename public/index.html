@@ -32,7 +32,7 @@
 
 .cloudbox{display:grid;gap:12px;padding:16px;border:1px solid #B8D1FA;border-radius:17px;background:linear-gradient(145deg,#F5F9FF,#FFF7ED)}.cloudgrid{display:grid;grid-template-columns:1.2fr 1fr .65fr;gap:10px;align-items:end}.cloudstatus{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.clouddot{width:11px;height:11px;border-radius:50%;background:#98A2B3;box-shadow:0 0 0 4px rgba(152,162,179,.12)}.clouddot.online{background:#12B76A;box-shadow:0 0 14px #12B76A}.clouddot.warning{background:#F79009;box-shadow:0 0 12px rgba(247,144,9,.65)}.cloud-ai{background:#E8F1FF;color:#1849A9}.banktoolbar{display:grid;grid-template-columns:1.4fr .7fr .9fr auto;gap:9px;align-items:end}.banklist{display:grid;gap:10px}.bankcard{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:13px;border:1px solid #E4E7EC;border-radius:15px;background:#fff}.bankcard h4{margin:0 0 5px;color:var(--blue)}.bankcard p{margin:0;color:#475467;line-height:1.4}.bankmeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.bankthumb{width:90px;height:70px;object-fit:contain;border:1px solid #D0D5DD;border-radius:9px;background:#fff}.cloudkey{font-family:Consolas,monospace}.syncing{position:relative;overflow:hidden}.syncing:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);transform:translateX(-100%);animation:scan 1.4s linear infinite}@media(max-width:900px){.cloudgrid,.banktoolbar{grid-template-columns:1fr 1fr}.cloudgrid .wide,.banktoolbar .wide{grid-column:1/-1}}@media(max-width:620px){.cloudgrid,.banktoolbar{grid-template-columns:1fr}.bankcard{grid-template-columns:auto 1fr}.bankcard>.actions{grid-column:1/-1}}
 
-/* Multiplayer com torcida e alerta industrial reforçado — v1.3.7 */
+/* Multiplayer com torcida e sincronização Firebase corrigida — v1.3.8 */
 .roles .role:nth-child(3) i{background:#ECFDF3;color:#067647}.accesssegments span{min-width:150px}.spectatorcard{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:11px;border:1px solid #D1E9FF;border-radius:14px;background:linear-gradient(145deg,#fff,#F5FAFF)}.spectatorcard b{display:block;color:var(--blue)}.spectatorcard small{display:block;color:var(--muted);margin-top:3px}.spectatorbadge{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:#ECFDF3;color:#067647;font-size:10px;font-weight:1000}.reaction-bar{position:sticky;bottom:calc(10px + var(--safe));z-index:1200;display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;padding:10px 12px;border:1px solid #B8D1FA;border-radius:18px;background:rgba(255,255,255,.96);box-shadow:0 14px 36px rgba(16,24,40,.18);backdrop-filter:blur(12px)}.reaction-bar strong{color:var(--blue);font-size:12px;margin-right:3px}.reaction-btn{display:grid;place-items:center;width:46px;height:46px;border:1px solid #D0D5DD;border-radius:14px;background:#fff;font-size:25px;transition:.15s}.reaction-btn:hover:not(:disabled),.reaction-btn:active:not(:disabled){transform:translateY(-4px) scale(1.09);border-color:#84ADFF;box-shadow:0 8px 20px rgba(0,61,165,.18)}.reaction-layer{position:fixed;inset:0;z-index:9700;pointer-events:none;overflow:hidden}.floating-reaction{position:absolute;left:var(--x);bottom:-90px;display:grid;justify-items:center;gap:2px;filter:drop-shadow(0 10px 12px rgba(16,24,40,.24));animation:reactionFloat var(--duration) cubic-bezier(.16,.78,.25,1) forwards}.floating-reaction .emoji{font-size:clamp(42px,7vw,74px);animation:reactionWiggle .55s ease-in-out infinite alternate}.floating-reaction .reactor{max-width:150px;padding:4px 8px;border-radius:999px;background:rgba(16,24,40,.82);color:#fff;font-size:10px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@keyframes reactionFloat{0%{opacity:0;transform:translate3d(0,0,0) scale(.55) rotate(-8deg)}12%{opacity:1}70%{opacity:1}100%{opacity:0;transform:translate3d(var(--drift),-108vh,0) scale(1.15) rotate(10deg)}}@keyframes reactionWiggle{from{transform:rotate(-8deg) scale(.96)}to{transform:rotate(8deg) scale(1.08)}}
 @keyframes emergencyScreenShake{0%,100%{transform:translate3d(0,0,0)}5%{transform:translate3d(-16px,5px,0) rotate(-.8deg)}10%{transform:translate3d(15px,-5px,0) rotate(.8deg)}17%{transform:translate3d(-13px,-3px,0) rotate(-.65deg)}24%{transform:translate3d(13px,4px,0) rotate(.65deg)}33%{transform:translate3d(-10px,2px,0)}42%{transform:translate3d(10px,-3px,0)}55%{transform:translate3d(-7px,1px,0)}68%{transform:translate3d(7px,-1px,0)}82%{transform:translate3d(-3px,0,0)}}@keyframes emergencyFlash{0%,100%{opacity:.12}50%{opacity:.42}}@keyframes emergencyBeacon{to{transform:rotate(360deg)}}@keyframes emergencyPop{0%{opacity:0;transform:scale(.5)}12%{opacity:1;transform:scale(1.08)}25%{transform:scale(1)}82%{opacity:1}100%{opacity:0;transform:scale(1.04)}}body.countdown-alerting .screen.active,body.countdown-alerting .projection.active{animation:emergencyScreenShake 1.65s cubic-bezier(.36,.07,.19,.97)!important}body.countdown-alerting:after{content:"";position:fixed;inset:0;z-index:9390;pointer-events:none;background:repeating-linear-gradient(135deg,rgba(217,45,32,.28) 0 32px,rgba(255,229,0,.23) 32px 64px);mix-blend-mode:multiply;animation:emergencyFlash .22s steps(2) 8}.countdown-warning{inset:0!important;left:0!important;top:0!important;min-width:0!important;padding:0!important;border:0!important;border-radius:0!important;background:rgba(4,14,31,.82)!important;box-shadow:none!important;justify-content:center!important;text-align:center!important;backdrop-filter:blur(5px);z-index:9500!important}.countdown-warning.active{display:flex!important;animation:emergencyPop 3.05s both!important}.countdown-warning .emergency-panel{position:relative;width:min(720px,92vw);overflow:hidden;padding:34px 24px 29px;border:6px solid #FFE500;border-radius:28px;background:linear-gradient(145deg,#B42318,#7A271A);box-shadow:0 0 0 12px rgba(255,229,0,.18),0 30px 100px rgba(0,0,0,.7)}.countdown-warning .emergency-panel:before{content:"";position:absolute;inset:-80% -20%;background:conic-gradient(from 0deg,transparent 0 25deg,rgba(255,229,0,.34) 25deg 48deg,transparent 48deg 180deg,rgba(255,229,0,.34) 180deg 205deg,transparent 205deg);animation:emergencyBeacon 1.1s linear infinite}.countdown-warning .emergency-content{position:relative;z-index:2}.countdown-warning .emergency-number{display:block;font-size:clamp(96px,22vw,210px);line-height:.82;color:#FFE500;text-shadow:0 8px 0 #7A271A,0 0 34px rgba(255,229,0,.65);font-weight:1000;letter-spacing:-8px}.countdown-warning strong{display:block;margin-top:14px;font-size:clamp(23px,5vw,42px)!important;letter-spacing:2px;text-transform:uppercase}.countdown-warning small{display:block;margin-top:9px;color:#fff!important;font-size:clamp(14px,2.5vw,20px)!important;font-weight:900}.countdown-warning .beacons{display:flex;justify-content:center;gap:26px;margin-bottom:15px}.countdown-warning .alarm-light{width:50px!important;height:50px!important;background:#FFE500!important;box-shadow:0 0 0 10px rgba(255,229,0,.18),0 0 45px #FFE500!important;animation:blink .16s steps(2) infinite!important}.countdown-warning .alarm-light.red{background:#FF3B30!important;box-shadow:0 0 0 10px rgba(255,59,48,.18),0 0 45px #FF3B30!important}.question.time-warning{border:5px solid #F79009!important;box-shadow:0 0 0 8px rgba(255,229,0,.19),0 0 55px rgba(247,144,9,.48),var(--shadow)!important;animation:urgentPulse .55s ease-in-out infinite!important}.timer.warn{font-size:20px!important;padding:10px 14px!important;background:#F79009!important;color:#fff!important;box-shadow:0 0 22px rgba(247,144,9,.6)}.audience-wait{border:1px solid #B8D1FA;background:linear-gradient(145deg,#fff,#EFF6FF)}@media(max-width:760px){.reaction-btn{width:42px;height:42px;font-size:23px}.reaction-bar strong{width:100%;text-align:center}.countdown-warning .emergency-panel{padding:26px 14px 24px}.countdown-warning .alarm-light{width:38px!important;height:38px!important}}
 </style>
@@ -99,7 +99,7 @@ const CLOUD_CONFIG = {
   autoCropImages: true
 };
 
-const APP_VERSION = "1.3.7-cloud";
+const APP_VERSION = "1.3.8-cloud";
 const HOST_KEY = "arenaSaepHostStateV3Cloud";
 const PARTICIPANT_KEY = "arenaSaepParticipantV1";
 const SETTINGS_KEY = "arenaSaepSettingsV1";
@@ -125,7 +125,7 @@ const FIREBASE_RULES = `{
     "rooms": {
       "$room": {
         ".read": "auth != null",
-        ".write": "!data.exists() && auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid) || (data.exists() && data.child('hostUid').val() === auth.uid))",
         "hostUid": { ".write": "auth != null && (!data.exists() || data.val() === auth.uid)" },
         "status": { ".write": "auth != null && root.child('rooms').child($room).child('hostUid').val() === auth.uid" },
         "settings": { ".write": "auth != null && root.child('rooms').child($room).child('hostUid').val() === auth.uid" },
@@ -685,7 +685,11 @@ function updateSettingsFromUI(){
   $$('[data-local-name]').forEach(x=>state.localNames[Number(x.dataset.localName)]=x.value.trim()||`Estação ${STATIONS[Number(x.dataset.localName)]}`);
   saveState(); renderConfig(); updateReadiness();
 }
-function approvedAssignedParticipants(){ return Object.values(state.participants||{}).filter(p=>p.approved && p.station && !p.blocked); }
+function approvedAssignedParticipants(){
+  return Object.entries(state.participants||{})
+    .map(([uid,p])=>Object.assign({uid},p||{}))
+    .filter(p=>p.approved && p.station && !p.blocked);
+}
 function filteredPool(){ return state.questions.filter(q=>(!state.settings.strictFive||q.quantidadeAlternativas===5)&&(!state.settings.themes.length||state.settings.themes.includes(q.tema))&&(!state.settings.units.length||state.settings.units.includes(q.unidadeCurricular))); }
 function updateReadiness(){
   const pool=filteredPool(), localReady=state.localNames.slice(0,state.settings.playerCount).every(n=>String(n||"").trim()), assigned=approvedAssignedParticipants().length, checks=[
@@ -711,8 +715,15 @@ function firebaseConfigured(){ return Boolean(FIREBASE_CONFIG.apiKey && FIREBASE
 async function initFirebase(){
   if(!firebaseConfigured()||!window.firebase){ firebaseReady=false; renderFirebaseStatus(); return false; }
   try {
-    fbApp=firebase.apps.length?firebase.app():firebase.initializeApp(FIREBASE_CONFIG); fbAuth=firebase.auth(); fbDb=firebase.database();
-    if(!fbAuth.currentUser) await fbAuth.signInAnonymously(); firebaseReady=true; state.hostUid=fbAuth.currentUser.uid; renderFirebaseStatus(); return true;
+    fbApp=firebase.apps.length?firebase.app():firebase.initializeApp(FIREBASE_CONFIG);
+    fbAuth=firebase.auth();
+    fbDb=firebase.database();
+    await fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    if(!fbAuth.currentUser) await fbAuth.signInAnonymously();
+    firebaseReady=true;
+    state.hostUid=fbAuth.currentUser.uid;
+    renderFirebaseStatus();
+    return true;
   } catch(e){ firebaseReady=false; console.error(e); renderFirebaseStatus(e.message); return false; }
 }
 function renderFirebaseStatus(error=""){
@@ -782,14 +793,117 @@ function renderConnections(){
   const stationRows=players.length?players.map(p=>`<div class="connectionrow"><span class="connection ${state.mode==="local"||participantPresence(p.uid)?"online":"offline"}">${state.mode==="local"?"Local":participantPresence(p.uid)?"Online":"Offline"}</span><b>${esc(p.name)}</b><span>Estação ${esc(p.station)}</span></div>`).join(""):'<div class="empty">Sem estações.</div>';
   box.innerHTML=stationRows+(state.mode==="multiplayer"?`<div class="connectionrow audience-wait"><span class="connection ${audienceOnline?"online":"offline"}">${audienceOnline?"Online":"Aguardando"}</span><b>👀 Espectadores</b><span>${audienceOnline} assistindo</span></div>`:"");
 }
-function sanitizedPlayer(p){ return {id:p.id,uid:p.uid||null,station:p.station,name:p.name,score:p.score,hits:p.hits,errors:p.errors,passes:p.passes,difficultyHits:p.difficultyHits,connected:state.mode==="local"||participantPresence(p.uid)}; }
-function getQuestion(id){ return state.game.deck.find(q=>String(q.id)===String(id))||state.questions.find(q=>String(q.id)===String(id)); }
-function publicQuestion(q,includeAnswer=false){ if(!q)return null; const base={id:q.id,runtimeNumber:q.runtimeNumber,enunciado:q.enunciado,alternativas:q.alternativas,dificuldade:q.dificuldade,tema:q.tema,competencia:q.competencia,capacidade:q.capacidade,habilidade:q.habilidade,unidadeCurricular:q.unidadeCurricular,codigoMatriz:q.codigoMatriz,imagemUrl:q.imagemUrl,imagens:questionImages(q),thumbnailUrl:q.thumbnailUrl||"",alternativaImagens:q.alternativaImagens||{},fonte:q.fonte,tempo:q.tempo,status:q.status||"available"}; if(includeAnswer){base.correta=q.correta;base.justificativa=q.justificativa;} return base; }
-function buildPublicState(){
-  const g=state.game,q=getQuestion(g.currentQuestionId), active=state.players[g.activePlayerIndex], origin=state.players[g.originPlayerIndex];
-  return {version:APP_VERSION,status:g.status,phase:g.phase,roomCode:state.roomCode,paused:g.status==="paused",settings:{timerEnabled:state.settings.timerEnabled,showCompetency:state.settings.showCompetency},players:state.players.map(sanitizedPlayer),activePlayerId:active?.id||null,originPlayerId:origin?.id||null,currentQuestionId:g.currentQuestionId,currentQuestionNumber:g.currentQuestionNumber,passCount:g.passCount,passSequence:g.passSequence,forceReturn:g.forceReturn,selectedAlternative:g.selectedAlternative,secondsRemaining:g.secondsRemaining,totalQuestions:g.totalQuestions,completedCount:g.completedCount,spectatorCount:Object.entries(state.spectators||{}).filter(([uid,s])=>!s.blocked&&spectatorPresence(uid)).length,remainingCards:g.deck.filter(x=>!x.cancelled).map(x=>({id:x.id,runtimeNumber:x.runtimeNumber,dificuldade:x.dificuldade,tema:x.tema,imagemUrl:x.thumbnailUrl||((questionImages(x)[0]||"").startsWith("data:")?"":questionImages(x)[0]||""),status:x.status||(x.completed?"answered":"available")})),question:g.phase==="answering"||g.phase==="feedback"?publicQuestion(q,false):null,result:g.phase==="feedback"?g.result:null,lastActionAt:g.lastActionAt};
+function firebaseSafe(value){
+  if(value===undefined||typeof value==="function"||typeof value==="symbol")return undefined;
+  if(value===null||typeof value==="string"||typeof value==="boolean")return value;
+  if(typeof value==="number")return Number.isFinite(value)?value:null;
+  if(value instanceof Date)return value.toISOString();
+  if(Array.isArray(value))return value.map(item=>{const safe=firebaseSafe(item);return safe===undefined?null:safe;});
+  if(typeof value==="object"){
+    const out={};
+    Object.entries(value).forEach(([key,item])=>{const safe=firebaseSafe(item);if(safe!==undefined)out[key]=safe;});
+    return out;
+  }
+  return String(value);
 }
-async function publishState(){ saveState(); renderHostGame(); if(state.mode==="multiplayer"&&roomRef&&firebaseReady){ try{await roomRef.update({status:state.game.status,publicState:buildPublicState(),history:state.game.history.slice(-150)});}catch(e){console.error(e);toast("Falha ao sincronizar a sala.","error");} } }
+function publicAsset(value,maxLength=950000){
+  const text=String(value||"").trim();
+  if(!text)return "";
+  if(text.startsWith("data:")&&text.length>maxLength)return "";
+  return text;
+}
+function safeAssetArray(values){return (Array.isArray(values)?values:[]).map(x=>publicAsset(x)).filter(Boolean);}
+function safeAlternativeImages(source={}){
+  const out={};LETTERS.forEach(letter=>out[letter]=safeAssetArray(source?.[letter]));return out;
+}
+function sanitizedPlayer(p={}){
+  return firebaseSafe({
+    id:String(p.id||p.uid||""),uid:p.uid?String(p.uid):null,station:String(p.station||""),name:String(p.name||"Participante"),
+    score:Number(p.score)||0,hits:Number(p.hits)||0,errors:Number(p.errors)||0,passes:Number(p.passes)||0,
+    difficultyHits:Object.assign({"Fácil":0,"Médio":0,"Difícil":0},p.difficultyHits||{}),
+    connected:state.mode==="local"||participantPresence(p.uid)
+  });
+}
+function getQuestion(id){ return state.game.deck.find(q=>String(q.id)===String(id))||state.questions.find(q=>String(q.id)===String(id)); }
+function publicQuestion(q,includeAnswer=false){
+  if(!q)return null;
+  const images=safeAssetArray(questionImages(q));
+  const base={
+    id:String(q.id||""),runtimeNumber:Number(q.runtimeNumber)||0,enunciado:String(q.enunciado||""),
+    alternativas:(Array.isArray(q.alternativas)?q.alternativas:[]).map(x=>String(x||"")),quantidadeAlternativas:Number(q.quantidadeAlternativas)||(Array.isArray(q.alternativas)?q.alternativas.length:0),
+    dificuldade:String(q.dificuldade||"Médio"),tema:String(q.tema||""),competencia:String(q.competencia||""),capacidade:String(q.capacidade||""),
+    habilidade:String(q.habilidade||""),unidadeCurricular:String(q.unidadeCurricular||""),codigoMatriz:String(q.codigoMatriz||""),
+    imagemUrl:publicAsset(q.imagemUrl),imagens:images,thumbnailUrl:publicAsset(q.thumbnailUrl),alternativaImagens:safeAlternativeImages(q.alternativaImagens||{}),
+    fonte:String(q.fonte||""),tempo:Number(q.tempo)||0,status:String(q.status||"available"),imageSyncWarning:questionImages(q).some(x=>String(x||"").startsWith("data:")&&!images.includes(x))
+  };
+  if(includeAnswer){base.correta=String(q.correta||"");base.justificativa=String(q.justificativa||"");}
+  return firebaseSafe(base);
+}
+function buildPublicState(){
+  const g=state.game,q=getQuestion(g.currentQuestionId),active=state.players[g.activePlayerIndex],origin=state.players[g.originPlayerIndex];
+  const payload={
+    version:APP_VERSION,status:String(g.status||"lobby"),phase:String(g.phase||"idle"),roomCode:String(state.roomCode||""),paused:g.status==="paused",
+    settings:{timerEnabled:Boolean(state.settings.timerEnabled),showCompetency:Boolean(state.settings.showCompetency)},
+    players:state.players.map(sanitizedPlayer).filter(p=>p.id),activePlayerId:active?.id?String(active.id):null,originPlayerId:origin?.id?String(origin.id):null,
+    currentQuestionId:g.currentQuestionId==null?null:String(g.currentQuestionId),currentQuestionNumber:Number(g.currentQuestionNumber)||0,passCount:Number(g.passCount)||0,
+    passSequence:(Array.isArray(g.passSequence)?g.passSequence:[]).map(x=>({from:String(x?.from||""),to:String(x?.to||"")})),forceReturn:Boolean(g.forceReturn),
+    selectedAlternative:g.selectedAlternative?String(g.selectedAlternative):null,secondsRemaining:Number(g.secondsRemaining)||0,totalQuestions:Number(g.totalQuestions)||0,
+    completedCount:Number(g.completedCount)||0,spectatorCount:Object.entries(state.spectators||{}).filter(([uid,s])=>!s.blocked&&spectatorPresence(uid)).length,
+    remainingCards:(Array.isArray(g.deck)?g.deck:[]).filter(x=>!x.cancelled).map(x=>({
+      id:String(x.id||""),runtimeNumber:Number(x.runtimeNumber)||0,dificuldade:String(x.dificuldade||"Médio"),tema:String(x.tema||""),
+      imagemUrl:publicAsset(x.thumbnailUrl||questionImages(x)[0]||"",260000),status:String(x.status||(x.completed?"answered":"available"))
+    })).filter(x=>x.id),
+    question:g.phase==="answering"||g.phase==="feedback"?publicQuestion(q,false):null,
+    result:g.phase==="feedback"?firebaseSafe(g.result):null,lastActionAt:String(g.lastActionAt||nowISO()),syncedAt:Date.now()
+  };
+  return firebaseSafe(payload);
+}
+function firebaseErrorText(error){
+  const code=String(error?.code||"").replace(/^database\//,"");
+  const message=String(error?.message||error||"Erro desconhecido");
+  if(code==="permission-denied"||/permission_denied/i.test(message))return "Permissão negada. Confirme as regras do Realtime Database e se esta sessão ainda é a proprietária da sala.";
+  if(/undefined/i.test(message))return "O estado da partida continha um campo indefinido. A versão 1.3.8 remove esses valores automaticamente.";
+  if(/too large|payload|10mb|maximum/i.test(message))return "O estado ficou grande demais para o Realtime Database. Arquive as imagens no banco em nuvem antes da partida ou reduza os recortes.";
+  return `${code?code+": ":""}${message}`;
+}
+let lastSyncFailureAt=0,lastSyncFailureText="";
+async function verifyRoomOwnership(){
+  if(!roomRef||!fbAuth?.currentUser)return {ok:false,reason:"Firebase ou referência da sala indisponível."};
+  const snap=await roomRef.child("hostUid").once("value");
+  if(!snap.exists())return {ok:false,reason:"A sala não existe mais no Firebase."};
+  if(snap.val()!==fbAuth.currentUser.uid)return {ok:false,reason:"Esta sala pertence a outra sessão anônima do instrutor. Crie uma nova sala neste aparelho."};
+  return {ok:true};
+}
+async function publishState(options={}){
+  saveState();
+  if(options.render!==false)renderHostGame();
+  if(state.mode!=="multiplayer")return true;
+  if(!roomRef||!firebaseReady){if(options.notify!==false)toast("Sala multiplayer sem conexão com o Firebase.","error");return false;}
+  try{
+    const ownership=await verifyRoomOwnership();
+    if(!ownership.ok)throw new Error(ownership.reason);
+    const publicState=buildPublicState();
+    const payload=firebaseSafe({
+      status:String(state.game.status||"lobby"),
+      settings:{playerCount:Number(state.settings.playerCount)||2},
+      publicState,
+      history:(Array.isArray(state.game.history)?state.game.history:[]).slice(-150),
+      updatedAt:Date.now(),
+      ...(options.extra||{})
+    });
+    const bytes=new Blob([JSON.stringify(payload)]).size;
+    if(bytes>8500000)throw new Error(`Estado com ${(bytes/1024/1024).toFixed(1)} MB; excede o limite seguro de sincronização.`);
+    await roomRef.update(payload);
+    lastSyncFailureAt=0;lastSyncFailureText="";
+    return true;
+  }catch(e){
+    console.error("Falha na sincronização Firebase",e);
+    const detail=firebaseErrorText(e),now=Date.now();
+    if(options.notify!==false&&(detail!==lastSyncFailureText||now-lastSyncFailureAt>8000))toast(`Falha ao sincronizar a sala: ${detail}`,"error");
+    lastSyncFailureAt=now;lastSyncFailureText=detail;
+    return false;
+  }
+}
 
 function selectQuestions(){
   let pool=filteredPool(); const n=clamp(state.settings.questionCount,5,Math.min(120,pool.length));
@@ -808,11 +922,21 @@ function preparePlayers(){
   return approvedAssignedParticipants().sort((a,b)=>STATIONS.indexOf(a.station)-STATIONS.indexOf(b.station)).map((p,i)=>({...defaultPlayer(i,p.name),id:p.uid,uid:p.uid,station:p.station,approved:true,connected:participantPresence(p.uid)}));
 }
 async function startGame(){
-  updateSettingsFromUI(); if($("#startBtn").disabled)return;
-  const deck=selectQuestions(); state.players=preparePlayers();
+  updateSettingsFromUI();if($("#startBtn").disabled)return;
+  const deck=selectQuestions();state.players=preparePlayers();
+  if(state.mode==="multiplayer"&&state.players.some(p=>!p.id||!p.uid)){
+    toast("Não foi possível identificar todos os jogadores. Atualize a lista de participantes e atribua novamente as estações.","error");
+    return;
+  }
   state.game=Object.assign(defaultState().game,{status:"running",phase:"cardSelection",deck,totalQuestions:deck.length,completedCount:0,mainTurnIndex:0,activePlayerIndex:0,originPlayerIndex:0,secondsRemaining:0,history:[],lastActionAt:nowISO()});
-  state.role="instructor"; screen("#hostGame"); if(state.mode==="multiplayer"&&roomRef)await roomRef.update({status:"running",settings:{playerCount:state.settings.playerCount},startedAt:firebase.database.ServerValue.TIMESTAMP});
-  await publishState(); transition("Linha de competências iniciada",`${state.players[0].name} assume a primeira estação.`,false); startTimerLoop();
+  state.role="instructor";
+  const synced=await publishState({render:false,extra:{startedAt:Date.now()}});
+  if(state.mode==="multiplayer"&&!synced){
+    state.game.status="setup";state.game.phase="idle";renderConfig();updateReadiness();
+    toast("A partida não foi iniciada porque o estado inicial não chegou aos jogadores.","error");
+    return;
+  }
+  screen("#hostGame");renderHostGame();transition("Linha de competências iniciada",`${state.players[0].name} assume a primeira estação.`,false);startTimerLoop();
 }
 function currentPlayer(){return state.players[state.game.activePlayerIndex];}
 function originPlayer(){return state.players[state.game.originPlayerIndex];}
@@ -888,7 +1012,7 @@ function pauseToggle(){
 }
 function startTimerLoop(){ clearInterval(timerHandle);timerHandle=setInterval(()=>{
   if(state.game.status!=="running"||state.game.phase!=="answering"||!state.settings.timerEnabled)return;
-  if(state.game.secondsRemaining>0){const previousSeconds=state.game.secondsRemaining;state.game.secondsRemaining--;maybeCountdownAlert(state.game,previousSeconds);renderHostStatusOnly();const timerEl=$("#hostPlay .timer");if(timerEl){timerEl.textContent=`⏱ ${formatTime(state.game.secondsRemaining)}`;timerEl.classList.toggle("warn",state.game.secondsRemaining<=15&&state.game.secondsRemaining>5);timerEl.classList.toggle("bad",state.game.secondsRemaining<=5);}const questionEl=$("#hostPlay .question");if(questionEl){questionEl.classList.toggle("time-warning",state.game.secondsRemaining<=15&&state.game.secondsRemaining>5);questionEl.classList.toggle("time-critical",state.game.secondsRemaining<=5);}if(state.mode==="multiplayer"&&roomRef)roomRef.child("publicState/secondsRemaining").set(state.game.secondsRemaining);}
+  if(state.game.secondsRemaining>0){const previousSeconds=state.game.secondsRemaining;state.game.secondsRemaining--;maybeCountdownAlert(state.game,previousSeconds);renderHostStatusOnly();const timerEl=$("#hostPlay .timer");if(timerEl){timerEl.textContent=`⏱ ${formatTime(state.game.secondsRemaining)}`;timerEl.classList.toggle("warn",state.game.secondsRemaining<=15&&state.game.secondsRemaining>5);timerEl.classList.toggle("bad",state.game.secondsRemaining<=5);}const questionEl=$("#hostPlay .question");if(questionEl){questionEl.classList.toggle("time-warning",state.game.secondsRemaining<=15&&state.game.secondsRemaining>5);questionEl.classList.toggle("time-critical",state.game.secondsRemaining<=5);}if(state.mode==="multiplayer"&&roomRef)roomRef.child("publicState/secondsRemaining").set(state.game.secondsRemaining).catch(e=>console.warn("Falha ao atualizar cronômetro remoto",e));}
   if(state.game.secondsRemaining<=0&&state.game.phase==="answering") timeoutCurrentQuestion();
 },1000); }
 function difficultyClass(d){return d==="Fácil"?"easy":d==="Difícil"?"hard":"medium";}
@@ -945,7 +1069,10 @@ function historyModal(){
 }
 
 function detachStudent(){studentListeners.forEach(({ref,event,cb})=>ref.off(event,cb));studentListeners=[];}
-function listenStudent(ref,event,cb){ref.on(event,cb);studentListeners.push({ref,event,cb});}
+function listenStudent(ref,event,cb){
+  const cancel=error=>{console.error("Leitura Firebase interrompida",error);toast(`Conexão da sala interrompida: ${firebaseErrorText(error)}`,"error");};
+  ref.on(event,cb,cancel);studentListeners.push({ref,event,cb});
+}
 async function sendStudentAction(type,payload={}){
   if(!firebaseReady||!state.roomCode||!currentStudentUid)return; try{await fbDb.ref(`rooms/${state.roomCode}/actions/${currentStudentUid}`).push({type,...payload,createdAt:firebase.database.ServerValue.TIMESTAMP});}catch(e){toast("Não foi possível enviar a ação.","error");}
 }
@@ -1098,7 +1225,7 @@ $("#startBtn").addEventListener("click",startGame);
 $("#hostPlay").addEventListener("click",e=>{const card=e.target.closest("[data-card]"),alt=e.target.closest("[data-alt]"),confirm=e.target.closest("[data-confirm]"),pass=e.target.closest("[data-pass]");if(card)chooseCard(card.dataset.card);else if(alt)selectAlternative(alt.dataset.alt);else if(confirm)confirmAnswer();else if(pass)passQuestion();});
 $("#feedbackClose").addEventListener("click",()=>{if(state.role==="instructor")completeQuestion();});
 $("#pauseBtn").addEventListener("click",pauseToggle);$("#cancelBtn").addEventListener("click",()=>{if(confirm("Cancelar a questão atual sem pontuação?"))cancelCurrentQuestion();});$("#advanceBtn").addEventListener("click",()=>{if(confirm("Avançar a vez principal?"))advanceRound();});
-$("#manualBtn").addEventListener("click",manualScoreModal);$("#historyBtn").addEventListener("click",historyModal);$("#syncBtn").addEventListener("click",()=>publishState().then(()=>toast("Estado sincronizado.","success")));$("#saveBtn").addEventListener("click",()=>{saveState();toast("Estado salvo neste aparelho.","success");});
+$("#manualBtn").addEventListener("click",manualScoreModal);$("#historyBtn").addEventListener("click",historyModal);$("#syncBtn").addEventListener("click",async()=>{const btn=$("#syncBtn"),original=btn.textContent;btn.disabled=true;btn.textContent="Sincronizando...";const ok=await publishState({notify:true});btn.disabled=false;btn.textContent=original;if(ok)toast("Estado sincronizado e recebido pela sala.","success");});$("#saveBtn").addEventListener("click",()=>{saveState();toast("Estado salvo neste aparelho.","success");});
 $("#setupBtn").addEventListener("click",()=>{saveState();screen("#instructorScreen");$("#restore").classList.add("active");});$("#endBtn").addEventListener("click",confirmEnd);
 $("#projectBtn").addEventListener("click",()=>{$("#projection").classList.add("active");renderProjection();});$("#closeProjection").addEventListener("click",()=>$("#projection").classList.remove("active"));
 

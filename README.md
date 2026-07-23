@@ -170,10 +170,48 @@ As operações exigem confirmação explícita na interface. Para a limpeza comp
 A limpeza é idempotente: caso o D1 seja apagado e uma falha temporária impeça a remoção de algum objeto do R2, a mesma operação pode ser executada novamente para eliminar imagens órfãs. Objetos de outros sistemas ou com prefixos diferentes de `questions/` não são removidos.
 
 
-## Versão 1.3.6 — normalização do texto e alerta de 15 segundos
+## Versão 1.3.7 — normalização do texto e alerta de 15 segundos
 
 - A extração local por PDF.js e os resultados do Workers AI passam por normalização automática para remover quebras de linha inseridas pela diagramação do PDF no meio das frases.
 - Espaços indevidos antes de pontuação são corrigidos; listas e itens numerados preservam linhas separadas.
 - O enunciado e as alternativas são exibidos com alinhamento justificado, hifenização e melhor distribuição em telas grandes e celulares.
 - Ao cruzar a marca de 15 segundos, todos os aparelhos conectados recebem um alerta breve: tremor visual, faixa de aviso, vibração quando suportada e sirene curta quando os sons estão habilitados.
 - O alerta é executado uma única vez por turno de resposta, inclusive após passagens ou retorno obrigatório. Nos últimos 5 segundos, o cronômetro e o card da questão entram em estado crítico vermelho.
+
+
+## Multiplayer gratuito com torcida — 1.3.7
+
+- 2, 3 ou 4 estações de jogo.
+- Entrada de espectadores sem ocupar estações.
+- Reações animadas com emojis visíveis no painel, celulares e projeção.
+- Firebase Authentication anônima + Realtime Database no plano Spark.
+- Novo alerta industrial de 15 segundos com sobreposição de tela, sirene reforçada, vibração e tremor intenso.
+- Consulte `FIREBASE_MULTIPLAYER_SETUP.md` e `firebase_rules_multiplayer.json`.
+
+## Firebase pré-configurado nesta cópia
+
+Esta distribuição já contém o `FIREBASE_CONFIG` do projeto `arena-saep-multiplayer-mateus` em `public/index.html` e em `arena_saep_multiplayer_cloudflare.html`. Antes do uso, confirme no Console Firebase que a autenticação anônima está habilitada, o Realtime Database está ativo e as regras de `firebase_rules_multiplayer.json` foram publicadas.
+
+## Atualização 1.3.8 — sincronização multiplayer
+
+Esta versão corrige a sala em que jogadores e espectadores permaneciam no lobby mesmo após o início da partida.
+
+Correções principais:
+
+- preserva o UID de cada participante ao transformar os registros do Firebase em estações do jogo;
+- remove valores `undefined` antes de enviar o estado ao Realtime Database;
+- valida se a sessão atual ainda é proprietária da sala;
+- sincroniza o início da partida em uma única operação;
+- mostra o motivo real quando a sincronização falha;
+- evita mensagem de sucesso quando o Firebase recusou a gravação;
+- limita imagens Base64 muito grandes no estado em tempo real;
+- mantém autenticação anônima com persistência local explícita;
+- amplia as regras para permitir ao instrutor atualizar todos os campos da sala, incluindo `startedAt` e `updatedAt`.
+
+### Ação obrigatória após atualizar o site
+
+Publique novamente o conteúdo de `firebase_rules_multiplayer.json` em:
+
+`Firebase Console → Realtime Database → Rules → Publish`
+
+Sem essa atualização, o Firebase poderá recusar o início e a sincronização da partida.

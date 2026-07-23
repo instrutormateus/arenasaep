@@ -1,0 +1,53 @@
+{
+  "rules": {
+    "rooms": {
+      "$room": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('hostUid').val() === auth.uid) || (data.exists() && data.child('hostUid').val() === auth.uid))",
+        "hostUid": {
+          ".write": "auth != null && (!data.exists() || data.val() === auth.uid)"
+        },
+        "status": {
+          ".write": "auth != null && root.child('rooms').child($room).child('hostUid').val() === auth.uid"
+        },
+        "settings": {
+          ".write": "auth != null && root.child('rooms').child($room).child('hostUid').val() === auth.uid"
+        },
+        "publicState": {
+          ".write": "auth != null && root.child('rooms').child($room).child('hostUid').val() === auth.uid"
+        },
+        "history": {
+          ".write": "auth != null && root.child('rooms').child($room).child('hostUid').val() === auth.uid"
+        },
+        "players": {
+          "$uid": {
+            ".write": "auth != null && (root.child('rooms').child($room).child('hostUid').val() === auth.uid || (auth.uid === $uid && ((!data.exists() && newData.child('approved').val() === false && newData.child('blocked').val() === false) || (data.exists() && newData.child('approved').val() === data.child('approved').val() && newData.child('station').val() === data.child('station').val() && newData.child('blocked').val() === data.child('blocked').val()))))"
+          }
+        },
+        "spectators": {
+          "$uid": {
+            ".write": "auth != null && (root.child('rooms').child($room).child('hostUid').val() === auth.uid || (auth.uid === $uid && ((!data.exists() && newData.child('blocked').val() === false) || (data.exists() && newData.child('blocked').val() === data.child('blocked').val()))))"
+          }
+        },
+        "presence": {
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || root.child('rooms').child($room).child('hostUid').val() === auth.uid)"
+          }
+        },
+        "actions": {
+          "$uid": {
+            "$action": {
+              ".write": "auth != null && (auth.uid === $uid || root.child('rooms').child($room).child('hostUid').val() === auth.uid)"
+            }
+          }
+        },
+        "reactions": {
+          "$reaction": {
+            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && root.child('rooms').child($room).child('spectators').child(auth.uid).exists() && root.child('rooms').child($room).child('spectators').child(auth.uid).child('blocked').val() !== true) || (data.exists() && !newData.exists() && root.child('rooms').child($room).child('hostUid').val() === auth.uid))",
+            ".validate": "!newData.exists() || (newData.hasChildren(['uid','emoji','name','createdAt']) && newData.child('emoji').isString() && newData.child('name').isString())"
+          }
+        }
+      }
+    }
+  }
+}
