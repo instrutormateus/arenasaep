@@ -1,5 +1,5 @@
 import { normalizeText, sanitizeQuestion, sha256 } from "./common.js";
-import { classifyQuestion } from "./ai.js";
+import { buildFallbackClassification, classifyQuestion } from "./ai.js";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -113,10 +113,52 @@ export async function saveQuestion(env, input, instructor) {
   }
 
   let classification;
-  try {
-    classification = await classifyQuestion(env, question);
-  } catch (error) {
-    throw new Error(`Classificação por IA: ${String(error?.message || error)}`);
+  let classificationWarning = "";
+  let archivedWithoutFreshAI = false;
+
+  // Reutiliza a classificação produzida durante a análise visual do PDF.
+  // Isso evita gastar a cota uma segunda vez ao aprovar a mesma questão.
+  const reusableAiMetadata = Boolean(question.aiModel) &&
+    !String(question.aiModel).startsWith("fallback-local:") &&
+    !Boolean(question.aiClassification?.pendingAI) &&
+    Boolean(
+      question.tema || question.unidadeCurricular || question.competencia ||
+      question.capacidade || question.habilidade || question.codigoMatriz
+    );
+
+  if (reusableAiMetadata) {
+    classification = {
+      dificuldade: question.dificuldade || "Médio",
+      tema: question.tema || "",
+      competencia: question.competencia || "",
+      capacidade: question.capacidade || "",
+      habilidade: question.habilidade || "",
+      unidadeCurricular: question.unidadeCurricular || "",
+      codigoMatriz: question.codigoMatriz || "",
+      tags: Array.isArray(question.aiClassification?.tags) ? question.aiClassification.tags.slice(0, 12) : [],
+      confidence: question.aiConfidence || 0.65,
+      reviewNotes: ["Classificação gerada durante a análise do PDF e reutilizada no arquivamento."],
+      model: question.aiModel,
+      reused: true,
+      pendingAI: false,
+    };
+  } else {
+    try {
+      classification = await classifyQuestion(env, question);
+    } catch (error) {
+      if (String(env.ARCHIVE_WITHOUT_AI || "true").toLowerCase() === "false") {
+        throw new Error(`Classificação por IA: ${String(error?.message || error)}`);
+      }
+      classification = buildFallbackClassification(question, error);
+      archivedWithoutFreshAI = true;
+      classificationWarning = classification.reviewNotes?.[0] ||
+        "A questão foi arquivada sem uma nova classificação por IA.";
+      console.warn("[Arena SAEP] Arquivamento com classificação provisória.", {
+        id: question.id,
+        reasonCode: classification.reasonCode,
+        error: String(error?.message || error),
+      });
+    }
   }
   const finalQuestion = {
     ...question,
@@ -179,7 +221,20 @@ export async function saveQuestion(env, input, instructor) {
   } catch (error) {
     throw new Error(`Gravação do histórico no D1: ${String(error?.message || error)}`);
   }
-  return { question: archivedQuestion, duplicate: Boolean(duplicate), classification, revisionId };
+  const responseQuestion = {
+    ...archivedQuestion,
+    classificationPending: Boolean(classification.pendingAI),
+    classificationMode: classification.fallback ? "provisoria-local" : classification.reused ? "ia-reutilizada" : "ia-nova",
+    archiveWarning: classificationWarning,
+  };
+  return {
+    question: responseQuestion,
+    duplicate: Boolean(duplicate),
+    classification,
+    revisionId,
+    archivedWithoutFreshAI,
+    warning: classificationWarning,
+  };
 }
 
 export async function listQuestions(env, url) {

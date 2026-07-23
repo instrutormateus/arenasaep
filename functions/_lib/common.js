@@ -102,6 +102,9 @@ export function sanitizeQuestion(input = {}) {
     paginaOrigem: String(input.paginaOrigem || "").trim().slice(0, 160),
     statusGabarito: String(input.statusGabarito || "Validado pelo instrutor").trim().slice(0, 160),
     observacao: String(input.observacao || "").trim().slice(0, 1000),
+    aiModel: String(input.aiModel || input.classificationModel || "").trim().slice(0, 300),
+    aiConfidence: Math.max(0, Math.min(1, Number(input.aiConfidence ?? input.confidence) || 0)),
+    aiClassification: input.aiClassification && typeof input.aiClassification === "object" ? input.aiClassification : null,
   };
   const availableAlternatives = letters.filter((letter, index) => {
     const text = String(question.alternativas[index] || "").trim();

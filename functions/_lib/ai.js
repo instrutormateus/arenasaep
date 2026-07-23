@@ -1,4 +1,79 @@
-import { aiPayload, safeJsonParse } from "./common.js";
+import { aiPayload, normalizeText, safeJsonParse } from "./common.js";
+
+
+export function isWorkersAiQuotaError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  return message.includes("4006") ||
+    message.includes("daily free allocation") ||
+    message.includes("10,000 neurons") ||
+    message.includes("10000 neurons") ||
+    message.includes("used up your daily free allocation");
+}
+
+function inferFallbackTheme(question) {
+  const text = normalizeText([
+    question.tema, question.unidadeCurricular, question.competencia, question.capacidade,
+    question.habilidade, question.enunciado, ...(question.alternativas || [])
+  ].filter(Boolean).join(" "));
+  const rules = [
+    [/clp|ladder|automacao|automacao industrial|sensor|atuador|inversor de frequencia/, "Automação Industrial"],
+    [/pneumatic|hidraulic|cilindro|valvula solenoide/, "Sistemas Pneumáticos e Hidráulicos"],
+    [/transistor|diodo|tiristor|triac|scr|amplificador|eletronica/, "Eletrônica"],
+    [/manutencao|ordem de servico|preditiva|preventiva|corretiva|fmea|fmeca|tpm/, "Manutenção Industrial"],
+    [/nr 10|nr10|nr 12|nr12|seguranca|apr|risco/, "Segurança em Instalações e Serviços"],
+    [/instalacao eletrica|disjuntor|contator|rele termico|spda|nbr 5410|nbr 5419|corrente|tensao|resistor|potencia eletrica/, "Eletrotécnica"],
+    [/5w2h|gestao|planejamento|processo|qualidade|histograma/, "Gestão e Melhoria de Processos"],
+  ];
+  for (const [pattern, theme] of rules) if (pattern.test(text)) return theme;
+  return question.tema || "Competências Profissionais";
+}
+
+function inferFallbackUnit(theme, current = "") {
+  if (current) return current;
+  const map = {
+    "Automação Industrial": "Automação Industrial",
+    "Sistemas Pneumáticos e Hidráulicos": "Sistemas de Automação",
+    "Eletrônica": "Eletrônica Aplicada",
+    "Manutenção Industrial": "Manutenção Industrial",
+    "Segurança em Instalações e Serviços": "Segurança do Trabalho",
+    "Eletrotécnica": "Fundamentos e Instalações Elétricas",
+    "Gestão e Melhoria de Processos": "Gestão da Manutenção e Processos",
+  };
+  return map[theme] || "";
+}
+
+export function buildFallbackClassification(question, error = null) {
+  const theme = String(question.tema || inferFallbackTheme(question)).trim();
+  const unit = inferFallbackUnit(theme, String(question.unidadeCurricular || "").trim());
+  const tags = [...new Set([
+    theme, unit, question.competencia, question.capacidade, question.habilidade,
+    "Classificação pendente de IA"
+  ].filter(Boolean).map(String))].slice(0, 12);
+  const quota = isWorkersAiQuotaError(error);
+  const reason = String(error?.message || error || "Serviço de IA indisponível").slice(0, 1200);
+  return {
+    dificuldade: ["Fácil", "Médio", "Difícil"].includes(question.dificuldade) ? question.dificuldade : "Médio",
+    tema: theme,
+    competencia: String(question.competencia || "").trim(),
+    capacidade: String(question.capacidade || "").trim(),
+    habilidade: String(question.habilidade || "").trim(),
+    unidadeCurricular: unit,
+    codigoMatriz: String(question.codigoMatriz || "").trim(),
+    tags,
+    confidence: 0,
+    reviewNotes: [
+      quota
+        ? "Cota gratuita diária do Workers AI esgotada. A questão foi arquivada com os metadados revisados pelo instrutor e classificação heurística local."
+        : "Workers AI indisponível. A questão foi arquivada com os metadados revisados pelo instrutor e classificação heurística local.",
+      "Reaprove ou atualize esta questão quando a IA estiver disponível para substituir a classificação provisória.",
+      reason,
+    ],
+    model: quota ? "fallback-local:quota-exceeded" : "fallback-local:ai-unavailable",
+    fallback: true,
+    pendingAI: true,
+    reasonCode: quota ? "AI_DAILY_QUOTA_EXCEEDED" : "AI_UNAVAILABLE",
+  };
+}
 
 const CLASSIFICATION_SCHEMA = {
   type: "object",
