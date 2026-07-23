@@ -75,6 +75,7 @@ function rowToQuestion(row) {
     : {};
   return {
     id: row.id,
+    idKey: row.id_key,
     enunciado: row.enunciado,
     alternativas: alternatives,
     correta: row.correta,
@@ -445,10 +446,140 @@ export async function listQuestions(env, url) {
   return { total: Number(totalRow?.total) || 0, questions: (result.results || []).map(rowToQuestion), limit, offset };
 }
 
+function normalizeIdKey(value) {
+  return normalizeText(value).replace(/\s+/g, "-");
+}
+
+async function listR2Keys(env, prefix) {
+  if (!env.QUESTION_IMAGES) throw new Error("Binding QUESTION_IMAGES ausente.");
+  const keys = [];
+  let cursor;
+  do {
+    const page = await env.QUESTION_IMAGES.list({ prefix, cursor, limit: 1000 });
+    keys.push(...(page.objects || []).map((object) => object.key));
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  return keys;
+}
+
+async function deleteR2Keys(env, keys) {
+  if (!env.QUESTION_IMAGES) throw new Error("Binding QUESTION_IMAGES ausente.");
+  let deleted = 0;
+  for (let offset = 0; offset < keys.length; offset += 1000) {
+    const chunk = keys.slice(offset, offset + 1000);
+    if (!chunk.length) continue;
+    await env.QUESTION_IMAGES.delete(chunk);
+    deleted += chunk.length;
+  }
+  return deleted;
+}
+
+async function deleteR2Prefix(env, prefix) {
+  const keys = await listR2Keys(env, prefix);
+  const deleted = await deleteR2Keys(env, keys);
+  return { prefix, found: keys.length, deleted };
+}
+
 export async function deleteQuestion(env, id) {
-  const idKey = normalizeText(id).replace(/\s+/g, "-");
-  const result = await env.DB.prepare("UPDATE questions SET status='deleted', updated_at=?1 WHERE id_key=?2").bind(new Date().toISOString(), idKey).run();
-  return { deleted: Number(result.meta?.changes || 0) > 0 };
+  if (!env.DB) throw new Error("Binding DB ausente.");
+  if (!env.QUESTION_IMAGES) throw new Error("Binding QUESTION_IMAGES ausente.");
+
+  const requested = String(id || "").trim();
+  if (!requested) throw new Error("Informe o ID ou a chave interna da questão.");
+
+  const normalized = normalizeIdKey(requested);
+  const row = await env.DB.prepare(`
+    SELECT id, id_key
+    FROM questions
+    WHERE id_key = ?1 OR id = ?2
+    LIMIT 1
+  `).bind(normalized, requested).first();
+
+  // O id_key recebido pela interface é preferido. Mesmo que o registro já tenha
+  // sido removido, uma nova tentativa consegue limpar imagens órfãs pelo prefixo.
+  const idKey = row?.id_key || normalized;
+  const questionId = row?.id || requested;
+  const prefix = `questions/${idKey}/`;
+
+  let databaseDeleted = false;
+  let revisionsDeleted = 0;
+  let questionsDeleted = 0;
+
+  try {
+    const results = await env.DB.batch([
+      env.DB.prepare("DELETE FROM question_revisions WHERE question_id_key = ?1").bind(idKey),
+      env.DB.prepare("DELETE FROM questions WHERE id_key = ?1 OR id = ?2").bind(idKey, questionId),
+    ]);
+    revisionsDeleted = Number(results?.[0]?.meta?.changes || 0);
+    questionsDeleted = Number(results?.[1]?.meta?.changes || 0);
+    databaseDeleted = true;
+  } catch (error) {
+    throw new Error(`Exclusão da questão e do histórico no D1: ${String(error?.message || error)}`);
+  }
+
+  let imageCleanup = { prefix, found: 0, deleted: 0 };
+  let warning = "";
+  try {
+    imageCleanup = await deleteR2Prefix(env, prefix);
+  } catch (error) {
+    warning = `A questão foi removida do D1, mas a limpeza das imagens no R2 não foi concluída: ${String(error?.message || error)}. Tente excluir novamente usando a mesma chave ${idKey}.`;
+  }
+
+  return {
+    deleted: databaseDeleted,
+    id: questionId,
+    idKey,
+    database: { questionsDeleted, revisionsDeleted },
+    images: imageCleanup,
+    warning,
+  };
+}
+
+export async function getQuestionBankStats(env) {
+  if (!env.DB) throw new Error("Binding DB ausente.");
+  if (!env.QUESTION_IMAGES) throw new Error("Binding QUESTION_IMAGES ausente.");
+  const [questions, revisions] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) AS total FROM questions").first(),
+    env.DB.prepare("SELECT COUNT(*) AS total FROM question_revisions").first(),
+  ]);
+  const imageKeys = await listR2Keys(env, "questions/");
+  return {
+    questions: Number(questions?.total || 0),
+    revisions: Number(revisions?.total || 0),
+    images: imageKeys.length,
+  };
+}
+
+export async function clearQuestionBank(env) {
+  if (!env.DB) throw new Error("Binding DB ausente.");
+  if (!env.QUESTION_IMAGES) throw new Error("Binding QUESTION_IMAGES ausente.");
+
+  const before = await getQuestionBankStats(env);
+
+  try {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM question_revisions"),
+      env.DB.prepare("DELETE FROM questions"),
+    ]);
+  } catch (error) {
+    throw new Error(`Limpeza das tabelas no D1: ${String(error?.message || error)}`);
+  }
+
+  let imageCleanup = { prefix: "questions/", found: 0, deleted: 0 };
+  let warning = "";
+  try {
+    imageCleanup = await deleteR2Prefix(env, "questions/");
+  } catch (error) {
+    warning = `As tabelas foram limpas, mas algumas imagens podem ter permanecido no R2: ${String(error?.message || error)}. Execute a limpeza novamente para remover objetos órfãos.`;
+  }
+
+  return {
+    cleared: true,
+    before,
+    database: { questionsDeleted: before.questions, revisionsDeleted: before.revisions },
+    images: imageCleanup,
+    warning,
+  };
 }
 
 

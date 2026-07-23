@@ -141,3 +141,39 @@ O gabarito extraído da tabela oficial é pré-selecionado, mas permanece editá
 No PDF de validação `avaliações-3.pdf`, o importador reconhece 40 questões antes da FOLHA DE RESPOSTA, localiza 40 respostas na tabela GABARITO e associa todas pelo código SAEP.
 
 Esta atualização não exige alteração no `schema.sql` nem recriação dos bindings. Basta substituir as pastas `public` e `functions` e realizar um novo deployment no Cloudflare Pages.
+
+
+## Versão 1.3.4 — correção do arquivamento e histórico atômico
+
+- Corrige o erro `alternativas is not defined` ao converter uma linha do D1 para o formato da Arena.
+- A gravação da questão e da revisão histórica passou a ocorrer no mesmo `DB.batch`, evitando registros em `questions` sem a correspondente entrada em `question_revisions`.
+- Quando a análise do PDF já identificou o esgotamento da cota diária, o arquivamento não tenta chamar a IA novamente: usa diretamente a classificação provisória revisada pelo instrutor.
+- Ao detectar a cota esgotada durante uma importação, as questões seguintes permanecem em processamento local, sem repetir chamadas que inevitavelmente falhariam.
+- A mensagem amarela de cota passa a indicar explicitamente que ela não bloqueia a aprovação e o arquivamento.
+
+Questões que já ficaram em `questions` sem histórico devido ao erro anterior podem ser reaprovadas uma vez após esta atualização; uma revisão será criada normalmente.
+
+### Reparar registros antigos sem revisão
+
+Na aba **Banco em nuvem**, use o botão **Reparar histórico**. Ele cria uma revisão-base para toda questão ativa cujo `content_hash` ainda não exista em `question_revisions`. O procedimento não altera o conteúdo atual da questão.
+
+## Versão 1.3.5 — exclusão permanente e limpeza do banco
+
+A aba **Banco em nuvem** passa a oferecer três operações administrativas:
+
+- **Excluir definitivamente** em cada questão: remove o registro da tabela `questions`, todas as revisões da tabela `question_revisions` e todos os objetos do R2 armazenados sob o prefixo da questão.
+- **Excluir selecionadas**: aplica a mesma exclusão permanente às questões marcadas.
+- **Limpar banco e imagens**: apaga todas as questões, todo o histórico e todos os objetos do R2 com prefixo `questions/`.
+
+As operações exigem confirmação explícita na interface. Para a limpeza completa, é necessário digitar `LIMPAR TUDO`.
+
+A limpeza é idempotente: caso o D1 seja apagado e uma falha temporária impeça a remoção de algum objeto do R2, a mesma operação pode ser executada novamente para eliminar imagens órfãs. Objetos de outros sistemas ou com prefixos diferentes de `questions/` não são removidos.
+
+
+## Versão 1.3.6 — normalização do texto e alerta de 15 segundos
+
+- A extração local por PDF.js e os resultados do Workers AI passam por normalização automática para remover quebras de linha inseridas pela diagramação do PDF no meio das frases.
+- Espaços indevidos antes de pontuação são corrigidos; listas e itens numerados preservam linhas separadas.
+- O enunciado e as alternativas são exibidos com alinhamento justificado, hifenização e melhor distribuição em telas grandes e celulares.
+- Ao cruzar a marca de 15 segundos, todos os aparelhos conectados recebem um alerta breve: tremor visual, faixa de aviso, vibração quando suportada e sirene curta quando os sons estão habilitados.
+- O alerta é executado uma única vez por turno de resposta, inclusive após passagens ou retorno obrigatório. Nos últimos 5 segundos, o cronômetro e o card da questão entram em estado crítico vermelho.
