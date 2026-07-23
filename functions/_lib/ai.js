@@ -48,27 +48,59 @@ const PAGE_SCHEMA = {
 };
 
 async function runJson(env, model, messages, schema, extra = {}) {
+  const maxTokens = Number(extra.max_tokens || extra.max_completion_tokens || 3500);
+  const modelExtras = { ...extra };
+  delete modelExtras.max_tokens;
+  delete modelExtras.max_completion_tokens;
+
   const request = {
     messages,
     temperature: 0,
-    max_completion_tokens: extra.max_completion_tokens || 3500,
+    max_tokens: maxTokens,
     response_format: { type: "json_schema", json_schema: schema },
-    ...extra,
+    ...modelExtras,
   };
+
   let response;
+  let jsonModeError = null;
   try {
     response = await env.AI.run(model, request);
   } catch (firstError) {
-    // Alguns modelos aceitam o esquema apenas como instrução textual.
-    const fallbackMessages = [...messages, { role: "system", content: `Retorne exclusivamente JSON válido segundo este esquema: ${JSON.stringify(schema)}` }];
-    response = await env.AI.run(model, { ...request, messages: fallbackMessages, response_format: undefined });
+    jsonModeError = firstError;
+    console.warn("[Arena SAEP] JSON Mode falhou; tentando resposta JSON por instrução.", {
+      model,
+      error: String(firstError?.message || firstError),
+    });
+    const fallbackMessages = [
+      ...messages,
+      {
+        role: "system",
+        content: `Retorne exclusivamente um objeto JSON válido, sem Markdown, conforme este esquema: ${JSON.stringify(schema)}`,
+      },
+    ];
+    try {
+      response = await env.AI.run(model, {
+        messages: fallbackMessages,
+        temperature: 0,
+        max_tokens: maxTokens,
+        ...modelExtras,
+      });
+    } catch (fallbackError) {
+      throw new Error(
+        `Workers AI recusou a classificação com o modelo ${model}. ` +
+        `JSON Mode: ${String(jsonModeError?.message || jsonModeError)}. ` +
+        `Tentativa alternativa: ${String(fallbackError?.message || fallbackError)}`
+      );
+    }
   }
+
   const payload = aiPayload(response);
+  if (payload && typeof payload === "object") return payload;
   if (typeof payload === "string") {
     const parsed = safeJsonParse(payload);
     if (parsed) return parsed;
   }
-  return payload;
+  throw new Error(`O modelo ${model} respondeu, mas não devolveu JSON válido.`);
 }
 
 export async function classifyQuestion(env, question) {
@@ -84,7 +116,12 @@ export async function classifyQuestion(env, question) {
       content: `Classifique esta questão revisada pelo instrutor. Considere o contexto profissional, a capacidade técnica exigida e a complexidade cognitiva.\n\n${JSON.stringify({ id: question.id, enunciado: question.enunciado, alternativas: question.alternativas, correta: question.correta, metadadosInformados: { dificuldade: question.dificuldade, tema: question.tema, competencia: question.competencia, capacidade: question.capacidade, habilidade: question.habilidade, unidadeCurricular: question.unidadeCurricular, codigoMatriz: question.codigoMatriz } }, null, 2)}`,
     },
   ];
-  const result = await runJson(env, model, messages, CLASSIFICATION_SCHEMA, { max_completion_tokens: 1600 });
+  let result;
+  try {
+    result = await runJson(env, model, messages, CLASSIFICATION_SCHEMA, { max_tokens: 1600 });
+  } catch (error) {
+    throw new Error(`Falha na classificação pedagógica por IA: ${String(error?.message || error)}`);
+  }
   return {
     dificuldade: ["Fácil", "Médio", "Difícil"].includes(result?.dificuldade) ? result.dificuldade : question.dificuldade || "Médio",
     tema: String(result?.tema || question.tema || "").trim(),
@@ -115,7 +152,7 @@ export async function analyzeQuestionPages(env, draft, pages) {
         content: `Analise a página ${page.page} relacionada à questão ${draft.id}. O rascunho extraído pelo PDF.js está abaixo. Não resuma, não corrija erros do original e não invente conteúdo. Para figuras, retorne caixas normalizadas de 0 a 1000. Ignore logotipo, cabeçalho, rodapé e número da página.\n\n${JSON.stringify(draft, null, 2)}`,
       },
     ];
-    const result = await runJson(env, model, messages, PAGE_SCHEMA, { image: page.image, max_completion_tokens: 3000 });
+    const result = await runJson(env, model, messages, PAGE_SCHEMA, { image: page.image, max_tokens: 3000 });
     if (result) results.push({ page: page.page, ...result });
   }
 

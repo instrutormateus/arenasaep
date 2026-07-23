@@ -90,8 +90,34 @@ function rowToQuestion(row) {
 
 export async function saveQuestion(env, input, instructor) {
   if (!env.DB) throw new Error("Binding DB ausente.");
-  const question = sanitizeQuestion(input);
-  const classification = await classifyQuestion(env, question);
+
+  try {
+    const schema = await env.DB.prepare(`
+      SELECT COUNT(*) AS total
+      FROM sqlite_master
+      WHERE type = 'table'
+        AND name IN ('questions', 'question_revisions')
+    `).first();
+    if (Number(schema?.total || 0) !== 2) {
+      throw new Error("As tabelas questions e question_revisions não existem. Execute o arquivo schema.sql no banco D1 vinculado.");
+    }
+  } catch (error) {
+    throw new Error(`Banco D1 não inicializado corretamente: ${String(error?.message || error)}`);
+  }
+
+  let question;
+  try {
+    question = sanitizeQuestion(input);
+  } catch (error) {
+    throw new Error(`Validação da questão: ${String(error?.message || error)}`);
+  }
+
+  let classification;
+  try {
+    classification = await classifyQuestion(env, question);
+  } catch (error) {
+    throw new Error(`Classificação por IA: ${String(error?.message || error)}`);
+  }
   const finalQuestion = {
     ...question,
     dificuldade: classification.dificuldade || question.dificuldade,
@@ -111,11 +137,17 @@ export async function saveQuestion(env, input, instructor) {
   const duplicate = duplicateByHash || duplicateById;
   // Quando o mesmo conteúdo chega com outro ID, atualizamos o registro original em vez de colidir com o índice UNIQUE de content_hash.
   const idKey = duplicate?.id_key || requestedIdKey;
-  const stored = await persistImages(env, finalQuestion, idKey);
+  let stored;
+  try {
+    stored = await persistImages(env, finalQuestion, idKey);
+  } catch (error) {
+    throw new Error(`Armazenamento de imagens no R2: ${String(error?.message || error)}`);
+  }
   const now = new Date().toISOString();
   const id = duplicate?.id || finalQuestion.id;
   const searchText = normalizeText([id, finalQuestion.enunciado, finalQuestion.tema, finalQuestion.competencia, finalQuestion.capacidade, finalQuestion.habilidade, finalQuestion.unidadeCurricular].join(" "));
-  await env.DB.prepare(`
+  try {
+    await env.DB.prepare(`
     INSERT INTO questions (
       id,id_key,enunciado,alternatives_json,correta,quantidade_alternativas,dificuldade,tema,competencia,capacidade,habilidade,unidade_curricular,codigo_matriz,justificativa,fonte,tempo,images_json,alternative_images_json,thumbnail_url,arquivo_origem,pagina_origem,status_gabarito,observacao,approved_by,ai_model,ai_confidence,ai_classification_json,content_hash,search_text,status,created_at,updated_at
     ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26,?27,?28,?29,'active',COALESCE((SELECT created_at FROM questions WHERE id_key=?2),?30),?30)
@@ -129,10 +161,14 @@ export async function saveQuestion(env, input, instructor) {
     finalQuestion.statusGabarito, finalQuestion.observacao, instructor, classification.model, classification.confidence,
     JSON.stringify(classification), contentHash, searchText, now
   ).run();
+  } catch (error) {
+    throw new Error(`Gravação da questão no D1: ${String(error?.message || error)}`);
+  }
   const row = await env.DB.prepare("SELECT * FROM questions WHERE id_key = ?1 LIMIT 1").bind(idKey).first();
   const archivedQuestion = rowToQuestion(row);
   const revisionId = crypto.randomUUID();
-  await env.DB.prepare(`
+  try {
+    await env.DB.prepare(`
     INSERT INTO question_revisions (
       revision_id,question_id_key,question_id,snapshot_json,content_hash,approved_by,ai_model,ai_confidence,created_at
     ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
@@ -140,6 +176,9 @@ export async function saveQuestion(env, input, instructor) {
     revisionId,idKey,archivedQuestion.id,JSON.stringify(archivedQuestion),contentHash,instructor,
     classification.model,classification.confidence,now
   ).run();
+  } catch (error) {
+    throw new Error(`Gravação do histórico no D1: ${String(error?.message || error)}`);
+  }
   return { question: archivedQuestion, duplicate: Boolean(duplicate), classification, revisionId };
 }
 

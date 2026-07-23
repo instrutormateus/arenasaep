@@ -20,8 +20,12 @@ export async function onRequestPost({ request, env }) {
     if (!body.question) return json({ error: "Questão não recebida." }, 400);
     return json(await saveQuestion(env, body.question, auth.instructor), 201);
   } catch (error) {
-    console.error(error);
-    return json({ error: "Não foi possível classificar e arquivar a questão.", details: String(error?.message || error) }, 500);
+    console.error("[Arena SAEP] Falha ao classificar/arquivar", error);
+    return json({
+      error: "Não foi possível classificar e arquivar a questão.",
+      details: String(error?.message || error),
+      hint: "Confirme o modelo AI_CLASSIFY_MODEL, execute o schema.sql no D1 e verifique os logs da Pages Function.",
+    }, 500);
   }
 }
 
