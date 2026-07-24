@@ -226,3 +226,13 @@ Sem essa atualização, o Firebase poderá recusar o início e a sincronização
 - Os certificados são gerados no próprio navegador e podem ser impressos ou salvos em PDF.
 
 Não há alteração nas regras do Firebase, no D1, no R2 ou no `schema.sql`.
+
+## Versão 1.4.0 — transições sincronizadas, torcida ampliada e cronômetro persistente
+
+- A animação industrial de passagem e retorno obrigatório agora é registrada no estado público do Firebase e exibida simultaneamente no painel, nas telas de todos os jogadores e na torcida.
+- A transição mostra as estações de origem e destino, a esteira, a caixa em movimento, a sinalização industrial e o alerta vermelho no retorno obrigatório.
+- A torcida passa a contar com reações positivas e de tensão: aplausos, apoio, celebração, dúvida, susto e desaprovação. As reações continuam animadas e visíveis para todos.
+- O cronômetro foi ampliado e centralizado em uma faixa aderente ao topo da questão. Ele permanece visível enquanto o usuário rola o enunciado e as alternativas.
+- Entre 15 e 6 segundos, o relógio pulsa em laranja; nos últimos 5 segundos, aumenta e pulsa em vermelho.
+
+Não há alteração nas regras do Firebase, no D1, no R2 ou no `schema.sql`.
