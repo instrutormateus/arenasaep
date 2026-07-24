@@ -281,3 +281,22 @@ Esta atualização adiciona a rota `functions/api/ai/classify-batch.js`. Portant
 - A substituição cria uma nova revisão histórica e remove imagens antigas que não são mais utilizadas.
 - O Banco em nuvem informa a quantidade de classificações pendentes e oferece **Classificar pendentes por IA** em lotes de até 10.
 - Se a cota terminar durante o processo, as questões já classificadas permanecem atualizadas e as demais continuam pendentes.
+
+## Versão 1.4.4 — discussão coletiva sincronizada
+
+Após a confirmação de uma resposta, o painel do instrutor oferece duas opções:
+
+- **Concluir e avançar:** encerra a questão e inicia a próxima rodada.
+- **Abrir para discussão:** publica a questão respondida em todos os aparelhos conectados.
+
+No modo de discussão, instrutor, competidores e torcida visualizam simultaneamente:
+
+- enunciado completo e figuras;
+- alternativa marcada pelo competidor;
+- alternativa correta destacada;
+- pontuação e tempo de resposta;
+- justificativa, competência/capacidade e fonte, quando disponíveis.
+
+Somente o instrutor pode encerrar a discussão pelo botão **Encerrar discussão e avançar para a próxima rodada**. A discussão não altera pontuação e fica registrada no histórico da partida.
+
+Não é necessário alterar regras do Firebase, D1, R2, bindings ou `schema.sql`.
