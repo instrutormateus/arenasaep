@@ -32,11 +32,11 @@
 
 .cloudbox{display:grid;gap:12px;padding:16px;border:1px solid #B8D1FA;border-radius:17px;background:linear-gradient(145deg,#F5F9FF,#FFF7ED)}.cloudgrid{display:grid;grid-template-columns:1.2fr 1fr .65fr;gap:10px;align-items:end}.cloudstatus{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.clouddot{width:11px;height:11px;border-radius:50%;background:#98A2B3;box-shadow:0 0 0 4px rgba(152,162,179,.12)}.clouddot.online{background:#12B76A;box-shadow:0 0 14px #12B76A}.clouddot.warning{background:#F79009;box-shadow:0 0 12px rgba(247,144,9,.65)}.cloud-ai{background:#E8F1FF;color:#1849A9}.banktoolbar{display:grid;grid-template-columns:1.4fr .7fr .9fr auto;gap:9px;align-items:end}.banklist{display:grid;gap:10px}.bankcard{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:13px;border:1px solid #E4E7EC;border-radius:15px;background:#fff}.bankcard h4{margin:0 0 5px;color:var(--blue)}.bankcard p{margin:0;color:#475467;line-height:1.4}.bankmeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.bankthumb{width:90px;height:70px;object-fit:contain;border:1px solid #D0D5DD;border-radius:9px;background:#fff}.cloudkey{font-family:Consolas,monospace}.syncing{position:relative;overflow:hidden}.syncing:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);transform:translateX(-100%);animation:scan 1.4s linear infinite}@media(max-width:900px){.cloudgrid,.banktoolbar{grid-template-columns:1fr 1fr}.cloudgrid .wide,.banktoolbar .wide{grid-column:1/-1}}@media(max-width:620px){.cloudgrid,.banktoolbar{grid-template-columns:1fr}.bankcard{grid-template-columns:auto 1fr}.bankcard>.actions{grid-column:1/-1}}
 
-/* Multiplayer com torcida, transições remotas e cronômetro persistente — v1.4.0 */
+/* Multiplayer com torcida, transições remotas e cronômetro persistente — v1.4.1 */
 .roles .role:nth-child(3) i{background:#ECFDF3;color:#067647}.accesssegments span{min-width:150px}.spectatorcard{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:11px;border:1px solid #D1E9FF;border-radius:14px;background:linear-gradient(145deg,#fff,#F5FAFF)}.spectatorcard b{display:block;color:var(--blue)}.spectatorcard small{display:block;color:var(--muted);margin-top:3px}.spectatorbadge{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:#ECFDF3;color:#067647;font-size:10px;font-weight:1000}.reaction-bar{position:sticky;bottom:calc(10px + var(--safe));z-index:1200;display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;padding:10px 12px;border:1px solid #B8D1FA;border-radius:18px;background:rgba(255,255,255,.96);box-shadow:0 14px 36px rgba(16,24,40,.18);backdrop-filter:blur(12px)}.reaction-bar strong{color:var(--blue);font-size:12px;margin-right:3px}.reaction-btn{display:grid;place-items:center;width:46px;height:46px;border:1px solid #D0D5DD;border-radius:14px;background:#fff;font-size:25px;transition:.15s}.reaction-btn:hover:not(:disabled),.reaction-btn:active:not(:disabled){transform:translateY(-4px) scale(1.09);border-color:#84ADFF;box-shadow:0 8px 20px rgba(0,61,165,.18)}.reaction-layer{position:fixed;inset:0;z-index:9700;pointer-events:none;overflow:hidden}.floating-reaction{position:absolute;left:var(--x);bottom:-90px;display:grid;justify-items:center;gap:2px;filter:drop-shadow(0 10px 12px rgba(16,24,40,.24));animation:reactionFloat var(--duration) cubic-bezier(.16,.78,.25,1) forwards}.floating-reaction .emoji{font-size:clamp(42px,7vw,74px);animation:reactionWiggle .55s ease-in-out infinite alternate}.floating-reaction .reactor{max-width:150px;padding:4px 8px;border-radius:999px;background:rgba(16,24,40,.82);color:#fff;font-size:10px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@keyframes reactionFloat{0%{opacity:0;transform:translate3d(0,0,0) scale(.55) rotate(-8deg)}12%{opacity:1}70%{opacity:1}100%{opacity:0;transform:translate3d(var(--drift),-108vh,0) scale(1.15) rotate(10deg)}}@keyframes reactionWiggle{from{transform:rotate(-8deg) scale(.96)}to{transform:rotate(8deg) scale(1.08)}}
 @keyframes emergencyScreenShake{0%,100%{transform:translate3d(0,0,0)}5%{transform:translate3d(-16px,5px,0) rotate(-.8deg)}10%{transform:translate3d(15px,-5px,0) rotate(.8deg)}17%{transform:translate3d(-13px,-3px,0) rotate(-.65deg)}24%{transform:translate3d(13px,4px,0) rotate(.65deg)}33%{transform:translate3d(-10px,2px,0)}42%{transform:translate3d(10px,-3px,0)}55%{transform:translate3d(-7px,1px,0)}68%{transform:translate3d(7px,-1px,0)}82%{transform:translate3d(-3px,0,0)}}@keyframes emergencyFlash{0%,100%{opacity:.12}50%{opacity:.42}}@keyframes emergencyBeacon{to{transform:rotate(360deg)}}@keyframes emergencyPop{0%{opacity:0;transform:scale(.5)}12%{opacity:1;transform:scale(1.08)}25%{transform:scale(1)}82%{opacity:1}100%{opacity:0;transform:scale(1.04)}}body.countdown-alerting .screen.active,body.countdown-alerting .projection.active{animation:emergencyScreenShake 1.65s cubic-bezier(.36,.07,.19,.97)!important}body.countdown-alerting:after{content:"";position:fixed;inset:0;z-index:9390;pointer-events:none;background:repeating-linear-gradient(135deg,rgba(217,45,32,.28) 0 32px,rgba(255,229,0,.23) 32px 64px);mix-blend-mode:multiply;animation:emergencyFlash .22s steps(2) 8}.countdown-warning{inset:0!important;left:0!important;top:0!important;min-width:0!important;padding:0!important;border:0!important;border-radius:0!important;background:rgba(4,14,31,.82)!important;box-shadow:none!important;justify-content:center!important;text-align:center!important;backdrop-filter:blur(5px);z-index:9500!important}.countdown-warning.active{display:flex!important;animation:emergencyPop 3.05s both!important}.countdown-warning .emergency-panel{position:relative;width:min(720px,92vw);overflow:hidden;padding:34px 24px 29px;border:6px solid #FFE500;border-radius:28px;background:linear-gradient(145deg,#B42318,#7A271A);box-shadow:0 0 0 12px rgba(255,229,0,.18),0 30px 100px rgba(0,0,0,.7)}.countdown-warning .emergency-panel:before{content:"";position:absolute;inset:-80% -20%;background:conic-gradient(from 0deg,transparent 0 25deg,rgba(255,229,0,.34) 25deg 48deg,transparent 48deg 180deg,rgba(255,229,0,.34) 180deg 205deg,transparent 205deg);animation:emergencyBeacon 1.1s linear infinite}.countdown-warning .emergency-content{position:relative;z-index:2}.countdown-warning .emergency-number{display:block;font-size:clamp(96px,22vw,210px);line-height:.82;color:#FFE500;text-shadow:0 8px 0 #7A271A,0 0 34px rgba(255,229,0,.65);font-weight:1000;letter-spacing:-8px}.countdown-warning strong{display:block;margin-top:14px;font-size:clamp(23px,5vw,42px)!important;letter-spacing:2px;text-transform:uppercase}.countdown-warning small{display:block;margin-top:9px;color:#fff!important;font-size:clamp(14px,2.5vw,20px)!important;font-weight:900}.countdown-warning .beacons{display:flex;justify-content:center;gap:26px;margin-bottom:15px}.countdown-warning .alarm-light{width:50px!important;height:50px!important;background:#FFE500!important;box-shadow:0 0 0 10px rgba(255,229,0,.18),0 0 45px #FFE500!important;animation:blink .16s steps(2) infinite!important}.countdown-warning .alarm-light.red{background:#FF3B30!important;box-shadow:0 0 0 10px rgba(255,59,48,.18),0 0 45px #FF3B30!important}.question.time-warning{border:5px solid #F79009!important;box-shadow:0 0 0 8px rgba(255,229,0,.19),0 0 55px rgba(247,144,9,.48),var(--shadow)!important;animation:urgentPulse .55s ease-in-out infinite!important}.timer.warn{font-size:20px!important;padding:10px 14px!important;background:#F79009!important;color:#fff!important;box-shadow:0 0 22px rgba(247,144,9,.6)}.audience-wait{border:1px solid #B8D1FA;background:linear-gradient(145deg,#fff,#EFF6FF)}@media(max-width:760px){.reaction-btn{width:42px;height:42px;font-size:23px}.reaction-bar strong{width:100%;text-align:center}.countdown-warning .emergency-panel{padding:26px 14px 24px}.countdown-warning .alarm-light{width:38px!important;height:38px!important}}
 
-/* Arena SAEP 1.4.0 — transições remotas, torcida ampliada e cronômetro persistente */
+/* Arena SAEP 1.4.1 — torcida em duas linhas e emojis sempre visíveis */
 .sticky-question-head{position:sticky!important;top:82px;z-index:1450;display:grid!important;grid-template-columns:1fr!important;justify-items:center;gap:8px!important;margin:-8px -8px 16px!important;padding:11px 14px!important;border:1px solid rgba(142,181,242,.72);border-radius:17px;background:rgba(255,255,255,.96);box-shadow:0 13px 32px rgba(16,24,40,.18);backdrop-filter:blur(14px)}
 .sticky-question-head .qmeta{justify-content:center;margin:0!important;order:2}.sticky-question-head .timer{order:1;display:flex;align-items:center;justify-content:center;min-width:min(310px,86vw);padding:12px 24px;border:3px solid rgba(255,255,255,.2);border-radius:18px;font-size:clamp(25px,4.8vw,42px);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:2px;box-shadow:0 8px 25px rgba(16,24,40,.28),inset 0 0 0 2px rgba(255,255,255,.1)}
 .sticky-question-head .timer:before{content:"TEMPO";margin-right:12px;padding-right:12px;border-right:1px solid rgba(255,255,255,.35);font-size:11px;letter-spacing:1.5px}.sticky-question-head .timer.warn{transform:scale(1.03);animation:timerUrgentPulse .72s ease-in-out infinite}.sticky-question-head .timer.bad{transform:scale(1.06);animation:timerCriticalPulse .36s ease-in-out infinite}
@@ -45,6 +45,89 @@
 .reaction-bar{max-width:min(980px,calc(100vw - 24px));margin:12px auto 0}.reaction-groups{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}.reaction-group{display:flex;align-items:center;gap:5px;padding:5px;border-radius:14px}.reaction-group.good{background:#ECFDF3;border:1px solid #ABEFC6}.reaction-group.tense{background:#FFF4ED;border:1px solid #FFD6AE}.reaction-group-label{padding:0 5px;color:#475467;font-size:10px;font-weight:1000;text-transform:uppercase;letter-spacing:.5px}.reaction-btn{width:42px;height:42px;font-size:23px}.reaction-btn[data-tone="tense"]{background:#FFF8F2;border-color:#FEC84B}.reaction-btn[data-tone="good"]{background:#F6FEF9;border-color:#ABEFC6}
 .transition.remote-transition .transcontent:before{content:"TRANSMISSÃO AO VIVO";display:inline-flex;margin-bottom:12px;padding:7px 12px;border:1px solid rgba(255,255,255,.28);border-radius:999px;background:rgba(255,255,255,.09);font-size:10px;font-weight:1000;letter-spacing:1.5px}.transition .transfer-route{display:flex;align-items:center;justify-content:center;gap:12px;margin:14px auto 2px;font-weight:1000}.transition .transfer-station{min-width:100px;padding:9px 13px;border:1px solid rgba(255,255,255,.28);border-radius:13px;background:rgba(255,255,255,.1)}.transition .transfer-arrow{color:#FFB27A;font-size:26px;animation:transferArrow .55s ease-in-out infinite alternate}@keyframes transferArrow{to{transform:translateX(7px)}}
 @media(max-width:760px){.sticky-question-head{top:72px;margin:-5px -5px 13px!important;padding:9px 8px!important}.sticky-question-head .timer{min-width:min(270px,92vw);font-size:clamp(25px,9vw,38px);padding:11px 16px}.sticky-question-head .qmeta{max-width:100%;justify-content:center}.reaction-bar{overflow-x:auto;justify-content:flex-start;flex-wrap:nowrap;padding:9px}.reaction-bar>strong{display:none}.reaction-groups{min-width:max-content;flex-wrap:nowrap;justify-content:flex-start}.reaction-group-label{display:none}.reaction-btn{width:40px;height:40px;font-size:22px;flex:0 0 auto}}
+
+
+/* Arena SAEP 1.4.1 — emojis da torcida em duas linhas, sem rolagem horizontal */
+.reaction-bar{
+  grid-template-columns:auto minmax(0,1fr)!important;
+  align-items:center!important;
+  overflow:visible!important;
+  max-height:none!important;
+}
+.reaction-groups{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:6px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.reaction-group{
+  display:grid!important;
+  grid-template-columns:54px repeat(var(--emoji-count),minmax(0,1fr))!important;
+  align-items:center!important;
+  gap:4px!important;
+  width:100%!important;
+  min-width:0!important;
+  padding:5px 7px!important;
+}
+.reaction-group-label{
+  display:block!important;
+  min-width:0!important;
+  padding:0 3px!important;
+  text-align:left!important;
+  white-space:nowrap!important;
+}
+.reaction-btn{
+  width:100%!important;
+  min-width:0!important;
+  max-width:42px!important;
+  height:auto!important;
+  aspect-ratio:1/1!important;
+  justify-self:center!important;
+  padding:0!important;
+  font-size:clamp(19px,2.5vw,23px)!important;
+}
+@media(max-width:760px){
+  .reaction-bar{
+    grid-template-columns:minmax(0,1fr)!important;
+    width:calc(100% - 12px)!important;
+    max-width:none!important;
+    margin:8px 6px 0!important;
+    padding:8px 6px!important;
+    gap:5px!important;
+    overflow:visible!important;
+  }
+  .reaction-bar>strong{display:none!important}
+  .reaction-groups{
+    width:100%!important;
+    min-width:0!important;
+    gap:5px!important;
+  }
+  .reaction-group{
+    grid-template-columns:38px repeat(var(--emoji-count),minmax(0,1fr))!important;
+    gap:2px!important;
+    padding:4px 3px!important;
+    border-radius:11px!important;
+  }
+  .reaction-group-label{
+    display:block!important;
+    font-size:8px!important;
+    line-height:1!important;
+    letter-spacing:0!important;
+    text-align:center!important;
+    padding:0!important;
+  }
+  .reaction-btn{
+    max-width:none!important;
+    font-size:clamp(17px,5vw,22px)!important;
+    border-radius:9px!important;
+  }
+}
+@media(max-width:380px){
+  .reaction-group{grid-template-columns:34px repeat(var(--emoji-count),minmax(0,1fr))!important;gap:1px!important}
+  .reaction-group-label{font-size:7px!important}
+  .reaction-btn{font-size:clamp(16px,4.9vw,20px)!important;border-radius:8px!important}
+}
 
 </style>
 </head>
@@ -110,7 +193,7 @@ const CLOUD_CONFIG = {
   autoCropImages: true
 };
 
-const APP_VERSION = "1.4.0-cloud";
+const APP_VERSION = "1.4.1-cloud";
 const HOST_KEY = "arenaSaepHostStateV3Cloud";
 const PARTICIPANT_KEY = "arenaSaepParticipantV1";
 const SETTINGS_KEY = "arenaSaepSettingsV1";
@@ -1152,7 +1235,7 @@ const REACTION_GROUPS=[
   {label:"Tensão",tone:"tense",emojis:["😮","🤔","😬","🙈","💥","👎","😂","😭"]}
 ];
 const REACTION_EMOJIS=REACTION_GROUPS.flatMap(group=>group.emojis);
-function reactionBarHTML(){return `<div class="reaction-bar"><strong>Reações:</strong><div class="reaction-groups">${REACTION_GROUPS.map(group=>`<div class="reaction-group ${group.tone}"><span class="reaction-group-label">${group.label}</span>${group.emojis.map(e=>`<button class="reaction-btn" data-tone="${group.tone}" data-reaction="${e}" title="Reagir com ${e}" aria-label="Reagir com ${e}">${e}</button>`).join("")}</div>`).join("")}</div></div>`;}
+function reactionBarHTML(){return `<div class="reaction-bar"><strong>Reações:</strong><div class="reaction-groups">${REACTION_GROUPS.map(group=>`<div class="reaction-group ${group.tone}" style="--emoji-count:${group.emojis.length}"><span class="reaction-group-label">${group.label}</span>${group.emojis.map(e=>`<button class="reaction-btn" data-tone="${group.tone}" data-reaction="${e}" title="Reagir com ${e}" aria-label="Reagir com ${e}">${e}</button>`).join("")}</div>`).join("")}</div></div>`;}
 async function sendAudienceReaction(emoji){
   if(state.role!=="spectator"||!firebaseReady||!state.roomCode||!currentStudentUid||!REACTION_EMOJIS.includes(emoji))return;const now=Date.now();if(now<reactionCooldownUntil){toast("Aguarde um instante antes da próxima reação.","warning");return;}reactionCooldownUntil=now+700;try{await fbDb.ref(`rooms/${state.roomCode}/reactions`).push({uid:currentStudentUid,emoji,name:currentAudienceName||"Torcida",createdAt:firebase.database.ServerValue.TIMESTAMP});}catch(e){toast("Não foi possível enviar a reação.","error");}
 }

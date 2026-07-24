@@ -236,3 +236,12 @@ Não há alteração nas regras do Firebase, no D1, no R2 ou no `schema.sql`.
 - Entre 15 e 6 segundos, o relógio pulsa em laranja; nos últimos 5 segundos, aumenta e pulsa em vermelho.
 
 Não há alteração nas regras do Firebase, no D1, no R2 ou no `schema.sql`.
+
+
+## Versão 1.4.1 — painel de reações em duas linhas
+
+- Emojis positivos e de tensão são exibidos em duas linhas fixas.
+- Todos os emojis permanecem visíveis em celulares, tablets e computadores.
+- A barra de reações não utiliza mais rolagem horizontal.
+- Os botões se redimensionam automaticamente para caber na largura disponível.
+- Os rótulos Apoio e Tensão permanecem visíveis sem ocupar uma linha adicional.
