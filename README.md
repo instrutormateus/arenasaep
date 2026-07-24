@@ -215,3 +215,14 @@ Publique novamente o conteúdo de `firebase_rules_multiplayer.json` em:
 `Firebase Console → Realtime Database → Rules → Publish`
 
 Sem essa atualização, o Firebase poderá recusar o início e a sincronização da partida.
+
+
+## Versão 1.3.9 — relatório remoto e reconhecimentos
+
+- O relatório final completo é sincronizado e exibido nos aparelhos dos jogadores e espectadores.
+- Jogadores fora da vez acompanham a mesma visualização da torcida, com cartas, questão e feedback em modo somente leitura.
+- O instrutor pode enviar, em tempo real, o certificado ao vencedor e uma mensagem reflexiva aos demais jogadores.
+- A torcida pode receber um certificado criativo e animado, com convite para assumir uma estação na próxima partida.
+- Os certificados são gerados no próprio navegador e podem ser impressos ou salvos em PDF.
+
+Não há alteração nas regras do Firebase, no D1, no R2 ou no `schema.sql`.
