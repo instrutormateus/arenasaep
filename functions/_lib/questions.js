@@ -1,5 +1,5 @@
 import { normalizeText, safeJsonParse, sanitizeQuestion, sha256 } from "./common.js";
-import { buildFallbackClassification, classifyQuestion } from "./ai.js";
+import { buildFallbackClassification, classifyQuestion, classifyQuestionsBatch, isWorkersAiQuotaError } from "./ai.js";
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 
@@ -20,6 +20,16 @@ function decodeDataUrl(dataUrl) {
 
 function publicImageUrl(key) {
   return `/api/images/${String(key).split("/").map(encodeURIComponent).join("/")}`;
+}
+
+function keyFromPublicImageUrl(url) {
+  const value = String(url || "");
+  const marker = "/api/images/";
+  const index = value.indexOf(marker);
+  if (index < 0) return "";
+  return value.slice(index + marker.length).split("/").map((part) => {
+    try { return decodeURIComponent(part); } catch { return part; }
+  }).join("/");
 }
 
 async function storeImage(env, idKey, dataUrl, label, index) {
@@ -113,7 +123,7 @@ function rowToQuestion(row) {
   };
 }
 
-export async function saveQuestion(env, input, instructor) {
+export async function saveQuestion(env, input, instructor, options = {}) {
   if (!env.DB) throw new Error("Binding DB ausente.");
 
   try {
@@ -135,6 +145,38 @@ export async function saveQuestion(env, input, instructor) {
     question = sanitizeQuestion(input);
   } catch (error) {
     throw new Error(`Validação da questão: ${String(error?.message || error)}`);
+  }
+
+  const replaceExisting = Boolean(options?.replaceExisting);
+  const requestedIdKey = normalizeIdKey(question.id) || `q-${Date.now()}`;
+  const contentHash = await sha256(JSON.stringify({
+    enunciado: normalizeText(question.enunciado),
+    alternativas: question.alternativas.slice(0, question.quantidadeAlternativas).map(normalizeText),
+    correta: question.correta,
+  }));
+
+  // A verificação por código acontece antes de qualquer chamada de IA para evitar
+  // consumo de Neurons em uma importação que ainda depende de confirmação.
+  const existingByCode = await env.DB.prepare(
+    "SELECT * FROM questions WHERE id_key = ?1 OR id = ?2 LIMIT 1"
+  ).bind(requestedIdKey, question.id).first();
+  if (existingByCode && !replaceExisting) {
+    const error = new Error(`A questão ${existingByCode.id} já existe no banco. Marque a opção de substituição para gravar uma nova versão.`);
+    error.status = 409;
+    error.code = "QUESTION_CODE_EXISTS";
+    error.existing = rowToQuestion(existingByCode);
+    throw error;
+  }
+
+  const duplicateByHash = await env.DB.prepare(
+    "SELECT * FROM questions WHERE content_hash = ?1 LIMIT 1"
+  ).bind(contentHash).first();
+  if (duplicateByHash && duplicateByHash.id_key !== requestedIdKey) {
+    const error = new Error(`O mesmo conteúdo já está arquivado com o código ${duplicateByHash.id}. Revise o código antes de continuar.`);
+    error.status = 409;
+    error.code = "QUESTION_CONTENT_EXISTS";
+    error.existing = rowToQuestion(duplicateByHash);
+    throw error;
   }
 
   let classification;
@@ -203,15 +245,11 @@ export async function saveQuestion(env, input, instructor) {
     unidadeCurricular: classification.unidadeCurricular || question.unidadeCurricular,
     codigoMatriz: classification.codigoMatriz || question.codigoMatriz,
   };
-  const requestedIdKey = normalizeText(finalQuestion.id).replace(/\s+/g, "-") || `q-${Date.now()}`;
-  const contentHash = await sha256(JSON.stringify({ enunciado: normalizeText(finalQuestion.enunciado), alternativas: finalQuestion.alternativas.slice(0, finalQuestion.quantidadeAlternativas).map(normalizeText), correta: finalQuestion.correta }));
-  const duplicateByHash = await env.DB.prepare("SELECT * FROM questions WHERE content_hash = ?1 LIMIT 1").bind(contentHash).first();
-  const duplicateById = duplicateByHash
-    ? null
-    : await env.DB.prepare("SELECT * FROM questions WHERE id_key = ?1 LIMIT 1").bind(requestedIdKey).first();
-  const duplicate = duplicateByHash || duplicateById;
-  // Quando o mesmo conteúdo chega com outro ID, atualizamos o registro original em vez de colidir com o índice UNIQUE de content_hash.
-  const idKey = duplicate?.id_key || requestedIdKey;
+  const duplicate = existingByCode || null;
+  const idKey = requestedIdKey;
+  const previousImageKeys = existingByCode && replaceExisting
+    ? await listR2Keys(env, `questions/${idKey}/`)
+    : [];
   let stored;
   try {
     stored = await persistImages(env, finalQuestion, idKey);
@@ -219,8 +257,8 @@ export async function saveQuestion(env, input, instructor) {
     throw new Error(`Armazenamento de imagens no R2: ${String(error?.message || error)}`);
   }
   const now = new Date().toISOString();
-  const id = duplicate?.id || finalQuestion.id;
-  const createdAt = duplicate?.created_at || now;
+  const id = finalQuestion.id;
+  const createdAt = existingByCode?.created_at || now;
   const searchText = normalizeText([
     id,
     finalQuestion.enunciado,
@@ -362,13 +400,32 @@ export async function saveQuestion(env, input, instructor) {
     throw new Error(`Gravação atômica da questão e do histórico no D1: ${String(error?.message || error)}`);
   }
 
+  let replacedImagesDeleted = 0;
+  let replacementWarning = "";
+  if (previousImageKeys.length) {
+    try {
+      const currentUrls = [
+        ...(stored.images || []),
+        stored.thumbnail,
+        ...Object.values(stored.alternativeImages || {}).flat(),
+      ].filter(Boolean);
+      const keep = new Set(currentUrls.map(keyFromPublicImageUrl).filter(Boolean));
+      const stale = previousImageKeys.filter((key) => !keep.has(key));
+      replacedImagesDeleted = await deleteR2Keys(env, stale);
+    } catch (error) {
+      replacementWarning = `A questão foi substituída, mas algumas imagens antigas podem ter permanecido no R2: ${String(error?.message || error)}`;
+    }
+  }
+
   return {
     question: archivedQuestion,
     duplicate: Boolean(duplicate),
+    replaced: Boolean(existingByCode && replaceExisting),
+    replacedImagesDeleted,
     classification,
     revisionId,
     archivedWithoutFreshAI,
-    warning: classificationWarning,
+    warning: [classificationWarning, replacementWarning].filter(Boolean).join(" "),
   };
 
 }
@@ -437,9 +494,127 @@ export async function listQuestions(env, url) {
   if (theme) { clauses.push("tema LIKE ?"); params.push(`%${theme}%`); }
   if (unit) { clauses.push("unidade_curricular LIKE ?"); params.push(`%${unit}%`); }
   const where = clauses.join(" AND ");
-  const totalRow = await env.DB.prepare(`SELECT COUNT(*) AS total FROM questions WHERE ${where}`).bind(...params).first();
-  const result = await env.DB.prepare(`SELECT * FROM questions WHERE ${where} ORDER BY updated_at DESC LIMIT ? OFFSET ?`).bind(...params, limit, offset).all();
-  return { total: Number(totalRow?.total) || 0, questions: (result.results || []).map(rowToQuestion), limit, offset };
+  const [totalRow, pendingRow, result] = await Promise.all([
+    env.DB.prepare(`SELECT COUNT(*) AS total FROM questions WHERE ${where}`).bind(...params).first(),
+    env.DB.prepare(`SELECT COUNT(*) AS total FROM questions WHERE status = 'active' AND (ai_model LIKE 'fallback-local:%' OR ai_classification_json LIKE '%"pendingAI":true%')`).first(),
+    env.DB.prepare(`SELECT * FROM questions WHERE ${where} ORDER BY updated_at DESC LIMIT ? OFFSET ?`).bind(...params, limit, offset).all(),
+  ]);
+  return {
+    total: Number(totalRow?.total) || 0,
+    pendingTotal: Number(pendingRow?.total) || 0,
+    questions: (result.results || []).map(rowToQuestion),
+    limit,
+    offset,
+  };
+}
+
+export async function checkQuestionCodes(env, ids = []) {
+  if (!env.DB) throw new Error("Binding DB ausente.");
+  const unique = [...new Set((Array.isArray(ids) ? ids : []).map((id) => String(id || "").trim()).filter(Boolean))].slice(0, 500);
+  const found = [];
+  for (let offset = 0; offset < unique.length; offset += 80) {
+    const chunk = unique.slice(offset, offset + 80);
+    const keys = chunk.map(normalizeIdKey);
+    const placeholders = keys.map((_, index) => `?${index + 1}`).join(",");
+    const result = await env.DB.prepare(`
+      SELECT id,id_key,enunciado,tema,dificuldade,unidade_curricular,approved_by,updated_at,ai_model,ai_classification_json
+      FROM questions
+      WHERE id_key IN (${placeholders}) AND status = 'active'
+    `).bind(...keys).all();
+    found.push(...(result.results || []).map((row) => ({
+      id: row.id,
+      idKey: row.id_key,
+      enunciado: row.enunciado,
+      tema: row.tema || "",
+      dificuldade: row.dificuldade || "Médio",
+      unidadeCurricular: row.unidade_curricular || "",
+      approvedBy: row.approved_by || "",
+      updatedAt: row.updated_at || "",
+      classificationPending: Boolean(safeJsonParse(row.ai_classification_json, {})?.pendingAI) || String(row.ai_model || "").startsWith("fallback-local:"),
+    })));
+  }
+  const byKey = new Map(found.map((item) => [item.idKey, item]));
+  return {
+    checked: unique.length,
+    existing: unique.map((id) => ({ requestedId: id, ...(byKey.get(normalizeIdKey(id)) || {}), exists: byKey.has(normalizeIdKey(id)) })),
+  };
+}
+
+export async function reclassifyPendingQuestions(env, instructor, limit = 100) {
+  if (!env.DB) throw new Error("Binding DB ausente.");
+  const safeLimit = Math.max(1, Math.min(200, Number(limit) || 100));
+  const pendingClause = `status = 'active' AND (ai_model LIKE 'fallback-local:%' OR ai_classification_json LIKE '%"pendingAI":true%')`;
+  const result = await env.DB.prepare(`SELECT * FROM questions WHERE ${pendingClause} ORDER BY updated_at ASC LIMIT ?1`).bind(safeLimit).all();
+  const rows = result.results || [];
+  if (!rows.length) return { processed: 0, updated: 0, remaining: 0, quotaExceeded: false, questions: [] };
+
+  let updated = 0;
+  let quotaExceeded = false;
+  let warning = "";
+  const updatedQuestions = [];
+
+  for (let offset = 0; offset < rows.length; offset += 10) {
+    const batchRows = rows.slice(offset, offset + 10);
+    const questions = batchRows.map(rowToQuestion);
+    let batchResult;
+    try {
+      batchResult = await classifyQuestionsBatch(env, questions);
+    } catch (error) {
+      quotaExceeded = isWorkersAiQuotaError(error);
+      warning = quotaExceeded
+        ? "A cota diária gratuita do Workers AI foi esgotada durante a classificação. As questões restantes continuam pendentes."
+        : `A classificação foi interrompida: ${String(error?.message || error)}`;
+      break;
+    }
+    const map = new Map((batchResult.classifications || []).map((item) => [String(item.id), item]));
+    const statements = [];
+    const now = new Date().toISOString();
+    for (const row of batchRows) {
+      const current = rowToQuestion(row);
+      const classification = map.get(String(current.id));
+      if (!classification) continue;
+      const normalizedClassification = { ...classification, pendingAI: false, fallback: false, reused: false };
+      const next = {
+        ...current,
+        dificuldade: classification.dificuldade || current.dificuldade,
+        tema: classification.tema || current.tema,
+        competencia: classification.competencia || current.competencia,
+        capacidade: classification.capacidade || current.capacidade,
+        habilidade: classification.habilidade || current.habilidade,
+        unidadeCurricular: classification.unidadeCurricular || current.unidadeCurricular,
+        codigoMatriz: classification.codigoMatriz || current.codigoMatriz,
+        approvedBy: instructor,
+        aiModel: classification.model || batchResult.model || "Workers AI",
+        aiConfidence: Number(classification.confidence) || 0.65,
+        aiClassification: normalizedClassification,
+        classificationPending: false,
+        classificationMode: "ia-nova",
+        archiveWarning: "",
+        cloudArchivedAt: now,
+      };
+      const searchText = normalizeText([next.id,next.enunciado,next.tema,next.competencia,next.capacidade,next.habilidade,next.unidadeCurricular].join(" "));
+      const revisionId = crypto.randomUUID();
+      statements.push(env.DB.prepare(`
+        UPDATE questions SET dificuldade=?1,tema=?2,competencia=?3,capacidade=?4,habilidade=?5,unidade_curricular=?6,codigo_matriz=?7,approved_by=?8,ai_model=?9,ai_confidence=?10,ai_classification_json=?11,search_text=?12,updated_at=?13 WHERE id_key=?14
+      `).bind(next.dificuldade,next.tema,next.competencia,next.capacidade,next.habilidade,next.unidadeCurricular,next.codigoMatriz,instructor,next.aiModel,next.aiConfidence,JSON.stringify(normalizedClassification),searchText,now,row.id_key));
+      statements.push(env.DB.prepare(`
+        INSERT INTO question_revisions (revision_id,question_id_key,question_id,snapshot_json,content_hash,approved_by,ai_model,ai_confidence,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
+      `).bind(revisionId,row.id_key,next.id,JSON.stringify(next),row.content_hash,instructor,next.aiModel,next.aiConfidence,now));
+      updatedQuestions.push(next);
+      updated++;
+    }
+    if (statements.length) await env.DB.batch(statements);
+  }
+
+  const remainingRow = await env.DB.prepare(`SELECT COUNT(*) AS total FROM questions WHERE ${pendingClause}`).first();
+  return {
+    processed: rows.length,
+    updated,
+    remaining: Number(remainingRow?.total || 0),
+    quotaExceeded,
+    warning,
+    questions: updatedQuestions,
+  };
 }
 
 function normalizeIdKey(value) {

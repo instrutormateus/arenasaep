@@ -247,7 +247,7 @@ Não há alteração nas regras do Firebase, no D1, no R2 ou no `schema.sql`.
 - Os botões se redimensionam automaticamente para caber na largura disponível.
 - Os rótulos Apoio e Tensão permanecem visíveis sem ocupar uma linha adicional.
 
-## Versão 1.4.2 — importação híbrida econômica
+## Versão 1.4.3 — importação híbrida econômica
 
 A importação de PDF passou a operar em duas camadas:
 
@@ -271,3 +271,13 @@ O painel mostra quantas questões foram resolvidas localmente, quantos recortes 
 
 Esta atualização adiciona a rota `functions/api/ai/classify-batch.js`. Portanto, substitua as pastas `public` e `functions` no GitHub e faça um novo deployment. Não é necessário alterar D1, R2, bindings, regras do Firebase ou `schema.sql`.
 
+
+
+## Versão 1.4.3 — controle por código e reclassificação
+
+- Toda importação consulta os códigos no D1 antes do arquivamento quando a API está conectada.
+- Um código existente não é sobrescrito silenciosamente: o instrutor precisa autorizar a substituição.
+- O servidor também aplica a regra, protegendo contra concorrência e versões antigas do navegador.
+- A substituição cria uma nova revisão histórica e remove imagens antigas que não são mais utilizadas.
+- O Banco em nuvem informa a quantidade de classificações pendentes e oferece **Classificar pendentes por IA** em lotes de até 10.
+- Se a cota terminar durante o processo, as questões já classificadas permanecem atualizadas e as demais continuam pendentes.

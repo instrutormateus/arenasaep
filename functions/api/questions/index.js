@@ -18,14 +18,20 @@ export async function onRequestPost({ request, env }) {
   try {
     const body = await request.json();
     if (!body.question) return json({ error: "Questão não recebida." }, 400);
-    return json(await saveQuestion(env, body.question, auth.instructor), 201);
+    const result = await saveQuestion(env, body.question, auth.instructor, { replaceExisting: Boolean(body.replaceExisting) });
+    return json(result, result.replaced ? 200 : 201);
   } catch (error) {
     console.error("[Arena SAEP] Falha ao classificar/arquivar", error);
+    const status = Number(error?.status) || 500;
     return json({
-      error: "Não foi possível classificar e arquivar a questão.",
+      error: status === 409 ? "A questão já existe no banco e exige confirmação de substituição." : "Não foi possível classificar e arquivar a questão.",
       details: String(error?.message || error),
-      hint: "Confirme o modelo AI_CLASSIFY_MODEL, execute o schema.sql no D1 e verifique os logs da Pages Function. Na versão 1.3.4, a cota esgotada não impede o arquivamento, salvo se ARCHIVE_WITHOUT_AI=false; a questão e o histórico são gravados no mesmo batch.",
-    }, 500);
+      code: error?.code || "QUESTION_ARCHIVE_FAILED",
+      existing: error?.existing || null,
+      hint: status === 409
+        ? "Revise a versão importada e marque Substituir questão existente antes de arquivar."
+        : "Confirme o modelo AI_CLASSIFY_MODEL, execute o schema.sql no D1 e verifique os logs da Pages Function.",
+    }, status);
   }
 }
 
