@@ -5,7 +5,8 @@ Esta versão não depende de Ollama, Python ou servidor aberto no computador do 
 ## Arquitetura
 
 - **Cloudflare Pages:** publica o jogo.
-- **Pages Functions / Workers AI:** analisa PDF e classifica toda questão aprovada.
+- **JavaScript + PDF.js:** realiza a pré-análise determinística, reconhece a estrutura SAEP e recorta imagens incorporadas ao PDF diretamente no navegador.
+- **Pages Functions / Workers AI:** recebe somente dúvidas de estrutura/figuras e classifica as questões em lotes econômicos.
 - **D1:** guarda texto, alternativas, gabarito, classificação, autoria e uma revisão imutável a cada aprovação.
 - **R2:** guarda os recortes de figuras e alternativas visuais.
 - **Firebase (opcional):** continua responsável pelo modo multiplayer em tempo real.
@@ -83,7 +84,7 @@ O painel deve indicar:
 
 ## Banco de questões
 
-- Ao aprovar um rascunho de PDF, a API classifica novamente a questão e a arquiva.
+- A análise híbrida classifica as questões em lotes e essa classificação é reutilizada no arquivamento, evitando uma segunda chamada de IA.
 - Questões importadas de XLSX/CSV podem ser enviadas pelo botão **Classificar e arquivar banco local**.
 - IDs e conteúdo repetido são detectados no D1. O registro principal é atualizado, mas cada aprovação também gera uma revisão no histórico.
 - Imagens Base64 são transferidas ao R2 e substituídas por URLs internas.
@@ -245,3 +246,28 @@ Não há alteração nas regras do Firebase, no D1, no R2 ou no `schema.sql`.
 - A barra de reações não utiliza mais rolagem horizontal.
 - Os botões se redimensionam automaticamente para caber na largura disponível.
 - Os rótulos Apoio e Tensão permanecem visíveis sem ocupar uma linha adicional.
+
+## Versão 1.4.2 — importação híbrida econômica
+
+A importação de PDF passou a operar em duas camadas:
+
+1. **Motor determinístico local (sem Neurons):**
+   - reconhece códigos `SAEP_XXXXX`;
+   - delimita a seção de questões por `FOLHA DE RESPOSTA`;
+   - lê e associa a tabela `GABARITO`;
+   - extrai enunciado e 2, 4 ou 5 alternativas;
+   - normaliza quebras de linha;
+   - identifica imagens incorporadas no fluxo gráfico do PDF;
+   - recorta e associa figuras ao enunciado ou às alternativas;
+   - gera uma classificação heurística inicial para apoiar a revisão.
+
+2. **Workers AI somente quando necessário:**
+   - o modelo visual é acionado apenas quando o motor local detecta indício de figura, mas não consegue obter um recorte confiável, ou quando há alternativa visual sem imagem;
+   - reparo textual/estrutural é enviado à IA somente para questões incompletas;
+   - a classificação pedagógica é enviada em lotes de até 10 questões pelo endpoint `/api/ai/classify-batch`, reduzindo o texto repetido em cada requisição;
+   - a classificação obtida é reutilizada ao arquivar, sem uma nova inferência.
+
+O painel mostra quantas questões foram resolvidas localmente, quantos recortes foram produzidos sem IA, quantas questões realmente exigiram visão e quantos lotes de classificação foram utilizados.
+
+Esta atualização adiciona a rota `functions/api/ai/classify-batch.js`. Portanto, substitua as pastas `public` e `functions` no GitHub e faça um novo deployment. Não é necessário alterar D1, R2, bindings, regras do Firebase ou `schema.sql`.
+

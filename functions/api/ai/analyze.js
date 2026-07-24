@@ -1,5 +1,5 @@
 import { json, requireAdmin } from "../../_lib/common.js";
-import { analyzeQuestionPages, isWorkersAiQuotaError } from "../../_lib/ai.js";
+import { analyzeQuestionPages, detectQuestionVisuals, isWorkersAiQuotaError } from "../../_lib/ai.js";
 
 export async function onRequestPost({ request, env }) {
   const auth = requireAdmin(request, env);
@@ -12,7 +12,10 @@ export async function onRequestPost({ request, env }) {
     if (!body.draft || !pages.length) {
       return json({ error: "Envie o rascunho e ao menos uma página renderizada." }, 400);
     }
-    const result = await analyzeQuestionPages(env, body.draft, pages);
+    const mode = String(body.mode || "full").toLowerCase();
+    const result = mode === "visuals"
+      ? await detectQuestionVisuals(env, body.draft, pages)
+      : await analyzeQuestionPages(env, body.draft, pages);
     return json(result);
   } catch (error) {
     console.error(error);

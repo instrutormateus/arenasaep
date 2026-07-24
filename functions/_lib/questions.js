@@ -145,11 +145,7 @@ export async function saveQuestion(env, input, instructor) {
   // Isso evita gastar a cota uma segunda vez ao aprovar a mesma questão.
   const reusableAiMetadata = Boolean(question.aiModel) &&
     !String(question.aiModel).startsWith("fallback-local:") &&
-    !Boolean(question.aiClassification?.pendingAI) &&
-    Boolean(
-      question.tema || question.unidadeCurricular || question.competencia ||
-      question.capacidade || question.habilidade || question.codigoMatriz
-    );
+    !Boolean(question.aiClassification?.pendingAI);
 
   const quotaAlreadyKnown =
     question.aiClassification?.reasonCode === "AI_DAILY_QUOTA_EXCEEDED" ||

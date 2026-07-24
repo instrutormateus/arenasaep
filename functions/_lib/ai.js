@@ -92,6 +92,56 @@ const CLASSIFICATION_SCHEMA = {
   required: ["dificuldade", "tema", "competencia", "capacidade", "habilidade", "unidadeCurricular", "codigoMatriz", "tags", "confidence", "reviewNotes"],
 };
 
+
+const BATCH_CLASSIFICATION_ITEM_SCHEMA = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    ...CLASSIFICATION_SCHEMA.properties,
+  },
+  required: ["id", ...CLASSIFICATION_SCHEMA.required],
+};
+
+const BATCH_CLASSIFICATION_SCHEMA = {
+  type: "object",
+  properties: {
+    classifications: {
+      type: "array",
+      minItems: 1,
+      maxItems: 20,
+      items: BATCH_CLASSIFICATION_ITEM_SCHEMA,
+    },
+  },
+  required: ["classifications"],
+};
+
+const VISUAL_SCHEMA = {
+  type: "object",
+  properties: {
+    warnings: { type: "array", items: { type: "string" }, maxItems: 8 },
+    confidence: { type: "number", minimum: 0, maximum: 1 },
+    visuals: {
+      type: "array",
+      maxItems: 10,
+      items: {
+        type: "object",
+        properties: {
+          page: { type: "integer", minimum: 1 },
+          target: { type: "string", enum: ["question", "A", "B", "C", "D", "E"] },
+          x: { type: "number", minimum: 0, maximum: 1000 },
+          y: { type: "number", minimum: 0, maximum: 1000 },
+          width: { type: "number", minimum: 1, maximum: 1000 },
+          height: { type: "number", minimum: 1, maximum: 1000 },
+          confidence: { type: "number", minimum: 0, maximum: 1 },
+          description: { type: "string" },
+        },
+        required: ["page", "target", "x", "y", "width", "height", "confidence", "description"],
+      },
+    },
+  },
+  required: ["warnings", "confidence", "visuals"],
+};
+
 const PAGE_SCHEMA = {
   type: "object",
   properties: {
@@ -213,6 +263,105 @@ export async function classifyQuestion(env, question) {
   };
 }
 
+
+export async function classifyQuestionsBatch(env, questions) {
+  if (!env.AI) throw new Error("Binding AI ausente.");
+  const model = env.AI_CLASSIFY_MODEL || "@cf/meta/llama-3.1-8b-instruct-fast";
+  const batch = (Array.isArray(questions) ? questions : []).slice(0, 20).map((question) => ({
+    id: String(question.id || ""),
+    enunciado: String(question.enunciado || ""),
+    alternativas: Array.isArray(question.alternativas) ? question.alternativas.map(String).slice(0, 5) : [],
+    correta: String(question.correta || ""),
+    metadadosInformados: {
+      dificuldade: question.dificuldade || "Médio",
+      tema: question.tema || "",
+      competencia: question.competencia || "",
+      capacidade: question.capacidade || "",
+      habilidade: question.habilidade || "",
+      unidadeCurricular: question.unidadeCurricular || "",
+      codigoMatriz: question.codigoMatriz || "",
+    },
+  })).filter((question) => question.id && question.enunciado);
+  if (!batch.length) return { classifications: [], model };
+
+  const messages = [
+    {
+      role: "system",
+      content: "Você classifica em lote questões profissionais do SAEP. Não altere enunciados, alternativas ou gabaritos. Para cada ID, retorne somente metadados pedagógicos objetivos em português do Brasil. Preserve exatamente o ID recebido.",
+    },
+    {
+      role: "user",
+      content: `Classifique as questões abaixo. Considere o contexto profissional, a capacidade técnica exigida e a complexidade cognitiva. Evite textos longos nos campos e nas observações.\n\n${JSON.stringify(batch)}`,
+    },
+  ];
+
+  let result;
+  try {
+    result = await runJson(env, model, messages, BATCH_CLASSIFICATION_SCHEMA, {
+      max_tokens: Math.min(7000, 700 + batch.length * 520),
+    });
+  } catch (error) {
+    throw new Error(`Falha na classificação pedagógica em lote por IA: ${String(error?.message || error)}`);
+  }
+
+  const byId = new Map(batch.map((question) => [question.id, question]));
+  const classifications = (Array.isArray(result?.classifications) ? result.classifications : [])
+    .filter((item) => byId.has(String(item?.id || "")))
+    .map((item) => {
+      const question = byId.get(String(item.id));
+      return {
+        id: String(item.id),
+        dificuldade: ["Fácil", "Médio", "Difícil"].includes(item?.dificuldade) ? item.dificuldade : question.metadadosInformados.dificuldade,
+        tema: String(item?.tema || question.metadadosInformados.tema || "").trim(),
+        competencia: String(item?.competencia || question.metadadosInformados.competencia || "").trim(),
+        capacidade: String(item?.capacidade || question.metadadosInformados.capacidade || "").trim(),
+        habilidade: String(item?.habilidade || question.metadadosInformados.habilidade || "").trim(),
+        unidadeCurricular: String(item?.unidadeCurricular || question.metadadosInformados.unidadeCurricular || "").trim(),
+        codigoMatriz: String(item?.codigoMatriz || question.metadadosInformados.codigoMatriz || "").trim(),
+        tags: Array.isArray(item?.tags) ? item.tags.map(String).slice(0, 12) : [],
+        confidence: Number(item?.confidence) || 0.65,
+        reviewNotes: Array.isArray(item?.reviewNotes) ? item.reviewNotes.map(String).slice(0, 8) : [],
+        model,
+      };
+    });
+  return { classifications, model };
+}
+
+export async function detectQuestionVisuals(env, draft, pages) {
+  if (!env.AI) throw new Error("Binding AI ausente.");
+  const model = env.AI_VISION_MODEL || "@cf/google/gemma-4-26b-a4b-it";
+  const visuals = [];
+  const warnings = [];
+  let confidence = 0;
+
+  for (const page of (Array.isArray(pages) ? pages : []).slice(0, 5)) {
+    const messages = [
+      {
+        role: "system",
+        content: "Você localiza somente figuras relevantes em páginas de avaliações SAEP. Não transcreva nem reescreva texto. Ignore logotipos, cabeçalhos, rodapés, números de página, marcas de seleção vazias e elementos decorativos. Retorne caixas normalizadas de 0 a 1000.",
+      },
+      {
+        role: "user",
+        content: `Localize na página ${page.page} apenas imagens, fotografias, tabelas, gráficos, diagramas, circuitos ou símbolos necessários para responder à questão ${draft.id}. O texto já foi extraído por um motor determinístico. Use target=question para figura do enunciado ou target=A/B/C/D/E para figura de uma alternativa. Não inclua texto corrido como figura.\n\nContexto local: ${JSON.stringify({ id: draft.id, enunciado: draft.enunciado, alternativas: draft.alternativas, quantidadeAlternativas: draft.quantidadeAlternativas })}`,
+      },
+    ];
+    const result = await runJson(env, model, messages, VISUAL_SCHEMA, {
+      image: page.image,
+      max_tokens: 1200,
+    });
+    visuals.push(...(result?.visuals || []).map((visual) => ({ ...visual, page: Number(visual.page || page.page) })));
+    warnings.push(...(result?.warnings || []).map(String));
+    confidence = Math.max(confidence, Number(result?.confidence) || 0);
+  }
+
+  return {
+    visuals,
+    warnings: [...new Set(warnings)],
+    confidence,
+    model,
+  };
+}
+
 export async function analyzeQuestionPages(env, draft, pages) {
   if (!env.AI) throw new Error("Binding AI ausente.");
   const model = env.AI_VISION_MODEL || "@cf/google/gemma-4-26b-a4b-it";
@@ -264,5 +413,6 @@ export async function analyzeQuestionPages(env, draft, pages) {
     confidence: Math.max(merged.confidence, classification.confidence || 0),
     model,
     classificationModel: classification.model,
+    classification: { ...classification, pendingAI: false, fallback: false },
   };
 }

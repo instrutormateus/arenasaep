@@ -24,7 +24,7 @@ export async function onRequestGet({ request, env }) {
 
   return json({
     service: "Arena SAEP Cloud",
-    version: "1.3.5",
+    version: "1.4.2",
     authorized: true,
     bindings: {
       ai: Boolean(env.AI),
@@ -41,6 +41,9 @@ export async function onRequestGet({ request, env }) {
       reusePdfClassification: true,
       permanentQuestionDeletion: true,
       fullBankCleanup: true,
+      hybridPdfPreanalysis: true,
+      localPdfImageCropping: true,
+      batchAiClassification: true,
     },
     models: {
       vision: env.AI_VISION_MODEL || "@cf/google/gemma-4-26b-a4b-it",
